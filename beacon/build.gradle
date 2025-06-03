@@ -1,0 +1,26 @@
+plugins {
+    id 'org.springframework.boot' version '3.3.0' apply(false)
+    id 'io.spring.dependency-management' version '1.1.5'
+    id 'java'
+}
+
+group = 'edu.hm.crownet.testbed'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    sourceCompatibility = '17'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation(project(":client"))
+    implementation(project(":scheduler"))
+    implementation(project(":rate-control"))
+    implementation(project(":analytics"))
+
+    implementation 'org.springframework.boot:spring-boot-starter'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}

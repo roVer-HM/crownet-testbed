@@ -1,1 +1,9 @@
 rootProject.name = 'crownet-testbed'
+
+include 'application'
+include 'client'
+include 'beacon'
+include 'api'
+include 'scheduler'
+include 'rate-control'
+include 'analytics'
