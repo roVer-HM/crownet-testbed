@@ -9,6 +9,7 @@ import edu.hm.crownet.testbed.ratecontrol.NodeEstimatorService;
 import edu.hm.crownet.testbed.ratecontrol.RateAdaptionService;
 import edu.hm.crownet.testbed.scheduler.Scheduler;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -40,9 +41,16 @@ public class BeaconSenderImpl implements BeaconSender {
   private String sourceId;
 
   private final Scheduler scheduler;
+  
+  @Qualifier("beaconRateAdaptionService")
   private final RateAdaptionService rateAdaptionService;
+  
+  @Qualifier("beaconMessageSizeService")
   private final MessageSizeService messageSizeService;
+  
+  @Qualifier("beaconNodeEstimatorService")
   private final NodeEstimatorService nodeEstimatorService;
+  
   private final MetricsLoggerImpl metricsLoggerImpl;
 
   private UdpClient senderUdpClient;

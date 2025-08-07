@@ -6,6 +6,7 @@ import edu.hm.crownet.testbed.ratecontrol.MessageSizeService;
 import edu.hm.crownet.testbed.ratecontrol.NodeEstimatorService;
 import edu.hm.crownet.testbed.ratecontrol.RateAdaptionService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -30,8 +31,14 @@ public class BeaconReceiverImpl implements BeaconReceiver {
   private final AtomicBoolean isRunning = new AtomicBoolean(false);
 
   private final UdpClient udpClient;
+  
+  @Qualifier("beaconNodeEstimatorService")
   private final NodeEstimatorService nodeEstimatorService;
+  
+  @Qualifier("beaconMessageSizeService")
   private final MessageSizeService messageSizeService;
+  
+  @Qualifier("beaconRateAdaptionService")
   private final RateAdaptionService rateAdaptionService;
 
   private Thread receiveThread;
