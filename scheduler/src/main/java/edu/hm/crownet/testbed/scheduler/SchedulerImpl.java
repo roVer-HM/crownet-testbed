@@ -30,28 +30,22 @@ public class SchedulerImpl implements Scheduler {
    */
   private final Map<String, ScheduledFuture<?>> tasks = new ConcurrentHashMap<>();
 
-  /**
-   * {@inheritDoc}
-   */
   @Override
   public void scheduleOneShotTask(String taskId, Runnable task, long delayInMilliseconds) {
-    stopScheduledTask(taskId); // stop existing if present
+    stopExistingTaskIfPresent(taskId);
     var future = scheduler.schedule(task, delayInMilliseconds, MILLISECONDS);
     tasks.put(taskId, future);
   }
 
   @Override
   public void scheduleTask(String taskId, Runnable task, long delay, long period) {
-    stopScheduledTask(taskId); // stop existing if present
+    stopExistingTaskIfPresent(taskId);
     var future = scheduler.scheduleAtFixedRate(task, delay, period, MILLISECONDS);
     tasks.put(taskId, future);
   }
 
-  /**
-   * {@inheritDoc}
-   */
   @Override
-  public void stopScheduledTask(String taskId) {
+  public void stopExistingTaskIfPresent(String taskId) {
     var future = tasks.remove(taskId);
     if (future != null) {
       future.cancel(false);

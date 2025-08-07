@@ -85,7 +85,7 @@ public class BeaconSenderImpl implements BeaconSender {
     if (!isRunning.get()) return;
 
     isRunning.set(false);
-    scheduler.stopScheduledTask(TASK_ID);
+    scheduler.stopExistingTaskIfPresent(TASK_ID);
 
     try {
       if (senderUdpClient != null) {

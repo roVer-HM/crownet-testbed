@@ -31,5 +31,5 @@ public interface Scheduler {
    *
    * @param taskId the unique identifier of the task to stop
    */
-  void stopScheduledTask(String taskId);
+  void stopExistingTaskIfPresent(String taskId);
 }
