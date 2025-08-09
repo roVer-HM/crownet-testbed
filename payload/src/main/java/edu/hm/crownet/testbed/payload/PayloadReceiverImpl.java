@@ -19,7 +19,6 @@ import java.net.SocketTimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
-@RequiredArgsConstructor
 public class PayloadReceiverImpl implements PayloadReceiver {
 
   @Value("${crownet.testbed.host}")
@@ -32,16 +31,22 @@ public class PayloadReceiverImpl implements PayloadReceiver {
 
   private final UdpClient udpClient;
 
-  @Qualifier("payloadNodeEstimatorService")
   private final NodeEstimatorService nodeEstimatorService;
-
-  @Qualifier("payloadMessageSizeService")
   private final MessageSizeService messageSizeService;
-
-  @Qualifier("payloadRateAdaptionService")
   private final RateAdaptionService rateAdaptionService;
 
   private Thread receiveThread;
+
+  public PayloadReceiverImpl(
+      UdpClient udpClient,
+      @Qualifier("payloadNodeEstimatorService") NodeEstimatorService nodeEstimatorService,
+      @Qualifier("payloadMessageSizeService") MessageSizeService messageSizeService,
+      @Qualifier("payloadRateAdaptionService") RateAdaptionService rateAdaptionService) {
+    this.udpClient = udpClient;
+    this.nodeEstimatorService = nodeEstimatorService;
+    this.messageSizeService = messageSizeService;
+    this.rateAdaptionService = rateAdaptionService;
+  }
 
   @Override
   public synchronized void startReceiving() {

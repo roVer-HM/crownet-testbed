@@ -19,29 +19,33 @@ import java.net.SocketTimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
-@RequiredArgsConstructor
 public class BeaconReceiverImpl implements BeaconReceiver {
 
   @Value("${crownet.testbed.host}")
   private String sourceId;
 
-  @Value("${crownet.testbed.wifi.broadcast.receive-port}")
+  @Value("${crownet.testbed.wifi.broadcast.receive-port:8888}")
   private int port;
 
   private final AtomicBoolean isRunning = new AtomicBoolean(false);
 
   private final UdpClient udpClient;
-  
-  @Qualifier("beaconNodeEstimatorService")
   private final NodeEstimatorService nodeEstimatorService;
-  
-  @Qualifier("beaconMessageSizeService")
   private final MessageSizeService messageSizeService;
-  
-  @Qualifier("beaconRateAdaptionService")
   private final RateAdaptionService rateAdaptionService;
 
   private Thread receiveThread;
+
+  public BeaconReceiverImpl(
+      UdpClient udpClient,
+      @Qualifier("beaconNodeEstimatorService") NodeEstimatorService nodeEstimatorService,
+      @Qualifier("beaconMessageSizeService") MessageSizeService messageSizeService,
+      @Qualifier("beaconRateAdaptionService") RateAdaptionService rateAdaptionService) {
+    this.udpClient = udpClient;
+    this.nodeEstimatorService = nodeEstimatorService;
+    this.messageSizeService = messageSizeService;
+    this.rateAdaptionService = rateAdaptionService;
+  }
 
   @Override
   public synchronized void startReceiving() {

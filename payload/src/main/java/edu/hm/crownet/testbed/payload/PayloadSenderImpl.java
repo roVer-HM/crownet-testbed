@@ -8,7 +8,6 @@ import edu.hm.crownet.testbed.ratecontrol.MessageSizeService;
 import edu.hm.crownet.testbed.ratecontrol.NodeEstimatorService;
 import edu.hm.crownet.testbed.ratecontrol.RateAdaptionService;
 import edu.hm.crownet.testbed.scheduler.Scheduler;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -23,12 +22,11 @@ import static java.lang.System.currentTimeMillis;
 import static java.net.InetAddress.getByName;
 
 @Service
-@RequiredArgsConstructor
 public class PayloadSenderImpl implements PayloadSender {
 
   private static final String TASK_ID = "payload-sender-task";
 
-  @Value("${crownet.testbed.wifi.broadcast.address}")
+  @Value("${crownet.testbed.wifi.broadcast.address:255.255.255.255}")
   private String broadcastAddress;
 
   @Value("${crownet.testbed.wifi.broadcast.payload-receive-port:8889}")
@@ -42,20 +40,26 @@ public class PayloadSenderImpl implements PayloadSender {
 
   private final Scheduler scheduler;
 
-  // Use separate rate adaptation service for payload
-  @Qualifier("payloadRateAdaptionService")
   private final RateAdaptionService rateAdaptionService;
-
-  @Qualifier("payloadMessageSizeService")
   private final MessageSizeService messageSizeService;
-
-  @Qualifier("payloadNodeEstimatorService")
   private final NodeEstimatorService nodeEstimatorService;
-
   private final MetricsLoggerImpl metricsLoggerImpl;
 
   private UdpClient senderUdpClient;
   private final AtomicBoolean isRunning = new AtomicBoolean(false);
+
+  public PayloadSenderImpl(
+          Scheduler scheduler,
+          @Qualifier("payloadRateAdaptionService") RateAdaptionService rateAdaptionService,
+          @Qualifier("payloadMessageSizeService") MessageSizeService messageSizeService,
+          @Qualifier("payloadNodeEstimatorService") NodeEstimatorService nodeEstimatorService,
+          MetricsLoggerImpl metricsLoggerImpl) {
+    this.scheduler = scheduler;
+    this.rateAdaptionService = rateAdaptionService;
+    this.messageSizeService = messageSizeService;
+    this.nodeEstimatorService = nodeEstimatorService;
+    this.metricsLoggerImpl = metricsLoggerImpl;
+  }
 
   @Override
   public void startSending(boolean useRateAdaption) {
@@ -152,8 +156,7 @@ public class PayloadSenderImpl implements PayloadSender {
     if (!isRunning.get()) return;
 
     try {
-      // Create a sample payload
-      String sampleData = "Sample payload data from " + sourceId;
+      var sampleData = "Sample payload data from " + sourceId;
       var payload = new Payload(sourceId, currentTimeMillis(), sampleData.getBytes());
       var data = serializePayload(payload);
       var packet = new DatagramPacket(data, data.length, getByName(broadcastAddress), receivePort);

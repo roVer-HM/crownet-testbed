@@ -23,38 +23,43 @@ import static java.lang.System.currentTimeMillis;
 import static java.net.InetAddress.getByName;
 
 @Service
-@RequiredArgsConstructor
 public class BeaconSenderImpl implements BeaconSender {
 
   private static final String TASK_ID = "beacon-sender-task";
 
-  @Value("${crownet.testbed.wifi.broadcast.address}")
+  @Value("${crownet.testbed.wifi.broadcast.address:255.255.255.255}")
   private String broadcastAddress;
 
-  @Value("${crownet.testbed.wifi.broadcast.receive-port}")
+  @Value("${crownet.testbed.wifi.broadcast.receive-port:8888}")
   private int receivePort;
 
-  @Value("${crownet.testbed.wifi.broadcast.send-port}")
+  @Value("${crownet.testbed.wifi.broadcast.send-port:8887}")
   private int senderPort;
 
   @Value("${crownet.testbed.host}")
   private String sourceId;
 
   private final Scheduler scheduler;
-  
-  @Qualifier("beaconRateAdaptionService")
   private final RateAdaptionService rateAdaptionService;
-  
-  @Qualifier("beaconMessageSizeService")
   private final MessageSizeService messageSizeService;
-  
-  @Qualifier("beaconNodeEstimatorService")
   private final NodeEstimatorService nodeEstimatorService;
-  
   private final MetricsLoggerImpl metricsLoggerImpl;
 
   private UdpClient senderUdpClient;
   private final AtomicBoolean isRunning = new AtomicBoolean(false);
+
+  public BeaconSenderImpl(
+      Scheduler scheduler,
+      @Qualifier("beaconRateAdaptionService") RateAdaptionService rateAdaptionService,
+      @Qualifier("beaconMessageSizeService") MessageSizeService messageSizeService,
+      @Qualifier("beaconNodeEstimatorService") NodeEstimatorService nodeEstimatorService,
+      MetricsLoggerImpl metricsLoggerImpl) {
+    this.scheduler = scheduler;
+    this.rateAdaptionService = rateAdaptionService;
+    this.messageSizeService = messageSizeService;
+    this.nodeEstimatorService = nodeEstimatorService;
+    this.metricsLoggerImpl = metricsLoggerImpl;
+  }
 
   @Override
   public void startSending(boolean useRateAdaption) {

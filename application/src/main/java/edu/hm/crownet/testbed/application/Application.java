@@ -11,7 +11,8 @@ import org.springframework.context.annotation.ComponentScan;
         "edu.hm.crownet.testbed.client",
         "edu.hm.crownet.testbed.scheduler",
         "edu.hm.crownet.testbed.ratecontrol",
-        "edu.hm.crownet.testbed.analytics"
+        "edu.hm.crownet.testbed.analytics",
+        "edu.hm.crownet.testbed.payload"
 })
 public class Application {
 
