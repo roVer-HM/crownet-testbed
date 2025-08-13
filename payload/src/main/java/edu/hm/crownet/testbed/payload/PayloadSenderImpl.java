@@ -16,6 +16,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.net.DatagramPacket;
+import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static java.lang.System.currentTimeMillis;
@@ -108,6 +109,33 @@ public class PayloadSenderImpl implements PayloadSender {
     } catch (IOException e) {
       System.err.println("Error closing resources: " + e.getMessage());
     }
+  }
+
+  @Override
+  public void scheduleSending(boolean useRateAdaption, LocalDateTime startTime, LocalDateTime endTime) {
+    if (isRunning.get()) {
+      System.out.println("PayloadSender is already running");
+      return;
+    }
+
+    long startDelay = java.time.Duration.between(LocalDateTime.now(), startTime).toMillis();
+    long endDelay = java.time.Duration.between(LocalDateTime.now(), endTime).toMillis();
+
+    if (startDelay < 0) {
+      throw new IllegalArgumentException("Start time cannot be in the past");
+    }
+
+    if (endDelay <= startDelay) {
+      throw new IllegalArgumentException("End time must be after start time");
+    }
+
+    // Schedule start
+    scheduler.scheduleOneShotTask(TASK_ID + "-start", () -> startSending(useRateAdaption), startDelay);
+    
+    // Schedule stop
+    scheduler.scheduleOneShotTask(TASK_ID + "-stop", this::stopSending, endDelay);
+    
+    System.out.println("PayloadSender scheduled to start at " + startTime + " and stop at " + endTime);
   }
 
   private void delayTransmission(long delay) {

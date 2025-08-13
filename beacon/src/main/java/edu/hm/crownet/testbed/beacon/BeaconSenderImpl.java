@@ -17,6 +17,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.net.DatagramPacket;
+import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static java.lang.System.currentTimeMillis;
@@ -110,6 +111,33 @@ public class BeaconSenderImpl implements BeaconSender {
     }
   }
 
+  @Override
+  public void scheduleSending(boolean useRateAdaption, LocalDateTime startTime, LocalDateTime endTime) {
+    if (isRunning.get()) {
+      System.out.println("BeaconSender is already running");
+      return;
+    }
+
+    long startDelay = java.time.Duration.between(LocalDateTime.now(), startTime).toMillis();
+    long endDelay = java.time.Duration.between(LocalDateTime.now(), endTime).toMillis();
+
+    if (startDelay < 0) {
+      throw new IllegalArgumentException("Start time cannot be in the past");
+    }
+
+    if (endDelay <= startDelay) {
+      throw new IllegalArgumentException("End time must be after start time");
+    }
+
+    // Schedule start
+    scheduler.scheduleOneShotTask(TASK_ID + "-start", () -> startSending(useRateAdaption), startDelay);
+    
+    // Schedule stop
+    scheduler.scheduleOneShotTask(TASK_ID + "-stop", this::stopSending, endDelay);
+    
+    System.out.println("BeaconSender scheduled to start at " + startTime + " and stop at " + endTime);
+  }
+
   private void delayTransmission(long delay) {
     if (!isRunning.get()) return;
     scheduler.scheduleOneShotTask(TASK_ID, this::reconsiderTransmission, delay);
@@ -133,7 +161,10 @@ public class BeaconSenderImpl implements BeaconSender {
       var beacon = new Beacon(sourceId, currentTimeMillis());
       var data = serializeBeacon(beacon);
       var packet = new DatagramPacket(data, data.length, getByName(broadcastAddress), receivePort);
+      
+      System.out.println("DEBUG: BeaconSender sending beacon to " + broadcastAddress + ":" + receivePort + " from " + sourceId);
       senderUdpClient.broadcast(packet);
+      System.out.println("DEBUG: BeaconSender successfully sent beacon packet of size " + data.length + " bytes");
 
       messageSizeService.registerMessageSize(data.length);
       var avgMessageSize = messageSizeService.getAverageMessageSize();
@@ -147,6 +178,8 @@ public class BeaconSenderImpl implements BeaconSender {
       var delay = rateAdaptionService.obtainNextTransmissionTime();
       delayTransmission(delay);
     } catch (Exception e) {
+      System.err.println("DEBUG: BeaconSender transmit failed: " + e.getMessage());
+      e.printStackTrace();
       throw new RuntimeException("Beacon sending failed", e);
     }
   }
@@ -158,12 +191,17 @@ public class BeaconSenderImpl implements BeaconSender {
       var beacon = new Beacon(sourceId, currentTimeMillis());
       var data = serializeBeacon(beacon);
       var packet = new DatagramPacket(data, data.length, getByName(broadcastAddress), receivePort);
+      
+      System.out.println("DEBUG: BeaconSender sending beacon (stupid mode) to " + broadcastAddress + ":" + receivePort + " from " + sourceId);
       senderUdpClient.broadcast(packet);
+      System.out.println("DEBUG: BeaconSender successfully sent beacon packet (stupid mode) of size " + data.length + " bytes");
 
       var nodeCount = nodeEstimatorService.currentAmountOfNeighbours();
       metricsLoggerImpl.logMetric(sourceId, beacon.timestamp(), nodeCount, packet.getLength());
       System.out.printf("%s sent a beacon.\n", beacon.sourceId());
     } catch (Exception e) {
+      System.err.println("DEBUG: BeaconSender stupidTransmit failed: " + e.getMessage());
+      e.printStackTrace();
       throw new RuntimeException("Beacon sending failed", e);
     }
   }

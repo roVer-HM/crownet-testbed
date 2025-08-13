@@ -11,7 +11,7 @@ sudo docker run --rm --network host \
   -e "EXPERIMENTAL_WIFI_RECEIVING_PORT=5006" \
   -e "EXPERIMENTAL_PAYLOAD_SENDING_PORT=5007" \
   -e "EXPERIMENTAL_PAYLOAD_RECEIVING_PORT=5008" \
-  crownet-testbed
+  192.168.0.2:5000/crownet-testbed:latest
 ```
 
 ```shell

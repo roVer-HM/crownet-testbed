@@ -1,10 +1,12 @@
 package edu.hm.crownet.testbed.payload;
 
 import edu.hm.crownet.testbed.client.UdpClient;
+import edu.hm.crownet.testbed.client.impl.UdpClientImpl;
 import edu.hm.crownet.testbed.payload.data.Payload;
 import edu.hm.crownet.testbed.ratecontrol.MessageSizeService;
 import edu.hm.crownet.testbed.ratecontrol.NodeEstimatorService;
 import edu.hm.crownet.testbed.ratecontrol.RateAdaptionService;
+import edu.hm.crownet.testbed.scheduler.Scheduler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,6 +18,7 @@ import java.io.ObjectInputStream;
 import java.net.DatagramPacket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
@@ -29,23 +32,24 @@ public class PayloadReceiverImpl implements PayloadReceiver {
 
   private final AtomicBoolean isRunning = new AtomicBoolean(false);
 
-  private final UdpClient udpClient;
+  private UdpClient udpClient;
 
   private final NodeEstimatorService nodeEstimatorService;
   private final MessageSizeService messageSizeService;
   private final RateAdaptionService rateAdaptionService;
+  private final Scheduler scheduler;
 
   private Thread receiveThread;
 
   public PayloadReceiverImpl(
-      UdpClient udpClient,
       @Qualifier("payloadNodeEstimatorService") NodeEstimatorService nodeEstimatorService,
       @Qualifier("payloadMessageSizeService") MessageSizeService messageSizeService,
-      @Qualifier("payloadRateAdaptionService") RateAdaptionService rateAdaptionService) {
-    this.udpClient = udpClient;
+      @Qualifier("payloadRateAdaptionService") RateAdaptionService rateAdaptionService,
+      Scheduler scheduler) {
     this.nodeEstimatorService = nodeEstimatorService;
     this.messageSizeService = messageSizeService;
     this.rateAdaptionService = rateAdaptionService;
+    this.scheduler = scheduler;
   }
 
   @Override
@@ -56,8 +60,11 @@ public class PayloadReceiverImpl implements PayloadReceiver {
     }
 
     try {
+      System.out.println("DEBUG: PayloadReceiver initializing on port " + port + " for host " + sourceId);
+      udpClient = new UdpClientImpl();
       udpClient.initialize(port);
       isRunning.set(true);
+      System.out.println("DEBUG: PayloadReceiver successfully initialized on port " + port);
 
       receiveThread = new Thread(() -> {
         System.out.println("PayloadReceiver started on port " + port);
@@ -121,11 +128,39 @@ public class PayloadReceiverImpl implements PayloadReceiver {
     }
   }
 
+  @Override
+  public void scheduleReceiving(LocalDateTime startTime, LocalDateTime endTime) {
+    if (isRunning.get()) {
+      System.out.println("PayloadReceiver is already running");
+      return;
+    }
+
+    long startDelay = java.time.Duration.between(LocalDateTime.now(), startTime).toMillis();
+    long endDelay = java.time.Duration.between(LocalDateTime.now(), endTime).toMillis();
+
+    if (startDelay < 0) {
+      throw new IllegalArgumentException("Start time cannot be in the past");
+    }
+
+    if (endDelay <= startDelay) {
+      throw new IllegalArgumentException("End time must be after start time");
+    }
+
+    // Schedule start
+    scheduler.scheduleOneShotTask("payload-receiver-start", this::startReceiving, startDelay);
+    
+    // Schedule stop
+    scheduler.scheduleOneShotTask("payload-receiver-stop", this::stopReceiving, endDelay);
+    
+    System.out.println("PayloadReceiver scheduled to start at " + startTime + " and stop at " + endTime);
+  }
+
   private void handleReceivedPayload(DatagramPacket packet) {
     try (var bais = new ByteArrayInputStream(packet.getData(), 0, packet.getLength()); var ois = new ObjectInputStream(bais)) {
       var obj = ois.readObject();
+
       if (!(obj instanceof Payload payload)) {
-        System.err.println("Received non-payload object: " + obj.getClass().getSimpleName());
+        System.err.println("Received non-payload object: " + obj.getClass().getSimpleName() + " from " + packet.getAddress().getHostAddress() + ":" + packet.getPort());
         return;
       }
 
