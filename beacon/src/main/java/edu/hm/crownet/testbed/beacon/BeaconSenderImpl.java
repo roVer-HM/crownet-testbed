@@ -191,10 +191,7 @@ public class BeaconSenderImpl implements BeaconSender {
       var beacon = new Beacon(sourceId, currentTimeMillis());
       var data = serializeBeacon(beacon);
       var packet = new DatagramPacket(data, data.length, getByName(broadcastAddress), receivePort);
-      
-      System.out.println("DEBUG: BeaconSender sending beacon (stupid mode) to " + broadcastAddress + ":" + receivePort + " from " + sourceId);
       senderUdpClient.broadcast(packet);
-      System.out.println("DEBUG: BeaconSender successfully sent beacon packet (stupid mode) of size " + data.length + " bytes");
 
       var nodeCount = nodeEstimatorService.currentAmountOfNeighbours();
       metricsLoggerImpl.logMetric(sourceId, beacon.timestamp(), nodeCount, packet.getLength());
