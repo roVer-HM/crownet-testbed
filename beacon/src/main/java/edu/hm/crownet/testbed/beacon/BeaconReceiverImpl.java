@@ -1,195 +1,81 @@
 package edu.hm.crownet.testbed.beacon;
 
 import edu.hm.crownet.testbed.beacon.data.Beacon;
-import edu.hm.crownet.testbed.client.UdpClient;
-import edu.hm.crownet.testbed.client.impl.UdpClientImpl;
+import edu.hm.crownet.testbed.client.Receiver;
 import edu.hm.crownet.testbed.ratecontrol.MessageSizeService;
 import edu.hm.crownet.testbed.ratecontrol.NodeEstimatorService;
 import edu.hm.crownet.testbed.ratecontrol.RateAdaptionService;
-import edu.hm.crownet.testbed.scheduler.Scheduler;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.net.DatagramPacket;
-import java.net.SocketException;
-import java.net.SocketTimeoutException;
-import java.time.LocalDateTime;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.nio.ByteBuffer;
 
 @Service
 public class BeaconReceiverImpl implements BeaconReceiver {
 
-  @Value("${crownet.testbed.host}")
-  private String sourceId;
+  @Value("${crownet.testbed.adhoc.node-id}")
+  private int sourceId;
 
-  @Value("${crownet.testbed.wifi.broadcast.receive-port:8888}")
-  private int port;
+  @Value("${crownet.testbed.adhoc.receive-port}")
+  private int receivePort;
 
-  private final AtomicBoolean isRunning = new AtomicBoolean(false);
-
-  private UdpClient udpClient;
+  // Rate Adaption Algorithm
   private final NodeEstimatorService nodeEstimatorService;
   private final MessageSizeService messageSizeService;
   private final RateAdaptionService rateAdaptionService;
-  private final Scheduler scheduler;
 
-  private Thread receiveThread;
+  // Responsible for receiving UDP packets from the network
+  private Receiver receiver;
 
   public BeaconReceiverImpl(
-      @Qualifier("beaconNodeEstimatorService") NodeEstimatorService nodeEstimatorService,
-      @Qualifier("beaconMessageSizeService") MessageSizeService messageSizeService,
-      @Qualifier("beaconRateAdaptionService") RateAdaptionService rateAdaptionService,
-      Scheduler scheduler) {
+          @Qualifier("beaconNodeEstimatorService") NodeEstimatorService nodeEstimatorService,
+          @Qualifier("beaconMessageSizeService") MessageSizeService messageSizeService,
+          @Qualifier("beaconRateAdaptionService") RateAdaptionService rateAdaptionService) {
     this.nodeEstimatorService = nodeEstimatorService;
     this.messageSizeService = messageSizeService;
     this.rateAdaptionService = rateAdaptionService;
-    this.scheduler = scheduler;
   }
 
   @Override
-  public synchronized void startReceiving() {
-    if (isRunning.get()) {
-      System.out.println("BeaconReceiver is already running");
-      return;
-    }
-
-    try {
-      System.out.println("DEBUG: BeaconReceiver initializing on port " + port + " for host " + sourceId);
-      udpClient = new UdpClientImpl();
-      udpClient.initialize(port);
-      isRunning.set(true);
-      System.out.println("DEBUG: BeaconReceiver successfully initialized on port " + port);
-
-      receiveThread = new Thread(() -> {
-        System.out.println("BeaconReceiver started on port " + port + " for host " + sourceId);
-        while (isRunning.get() && !Thread.currentThread().isInterrupted()) {
-          try {
-            System.out.println("DEBUG: BeaconReceiver waiting for packets on port " + port);
-            var packet = udpClient.receive();
-            System.out.println("DEBUG: BeaconReceiver received packet from " + packet.getAddress().getHostAddress() + ":" + packet.getPort() + " size: " + packet.getLength() + " bytes");
-            handleReceivedBeacon(packet);
-          } catch (RuntimeException e) {
-            // Check if it's a socket-related issue
-            var cause = e.getCause();
-            if (cause instanceof SocketException) {
-              if (isRunning.get()) {
-                System.err.println("Socket error in BeaconReceiver: " + cause.getMessage());
-              }
-              break;
-            } else if (cause instanceof SocketTimeoutException) {
-              // Timeout is expected, continue listening
-              System.out.println("DEBUG: BeaconReceiver timeout, continuing to listen...");
-            } else {
-              System.err.println("Runtime error in BeaconReceiver: " + e.getMessage());
-            }
-          } catch (Exception e) {
-            System.err.println("Unexpected error in BeaconReceiver: " + e.getMessage());
-          }
-        }
-        System.out.println("BeaconReceiver thread stopped");
-      });
-      receiveThread.setName("BeaconReceiver-Thread");
-      receiveThread.setDaemon(true);
-      receiveThread.start();
-    } catch (Exception e) {
-      isRunning.set(false);
-      System.err.println("DEBUG: BeaconReceiver failed to start: " + e.getMessage());
-      e.printStackTrace();
-      throw new RuntimeException("Failed to start beacon receiver", e);
-    }
+  public void stop() {
+    receiver.stop();
   }
 
   @Override
-  public synchronized void stopReceiving() {
-    if (!isRunning.get()) {
-      return;
-    }
-
-    isRunning.set(false);
-    if (receiveThread != null) {
-      receiveThread.interrupt();
-      try {
-        receiveThread.join(3000);
-        if (receiveThread.isAlive()) {
-          System.err.println("BeaconReceiver thread did not stop gracefully");
-        }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        System.err.println("Interrupted while waiting for BeaconReceiver thread to stop");
-      }
-    }
-
-    try {
-      udpClient.close();
-      System.out.println("BeaconReceiver stopped");
-    } catch (IOException e) {
-      System.err.println("Error closing UDP client: " + e.getMessage());
-    }
+  public void receive() {
+    receiver = new Receiver(receivePort, this::handlePacket);
+    receiver.start();
   }
 
-  @Override
-  public void scheduleReceiving(LocalDateTime startTime, LocalDateTime endTime) {
-    if (isRunning.get()) {
-      System.out.println("BeaconReceiver is already running");
-      return;
-    }
+  private void handlePacket(DatagramPacket packet) {
+    Beacon beacon = deserializeBeacon(packet.getData());
+    if (beacon.sourceId() == sourceId) return;
 
-    long startDelay = java.time.Duration.between(LocalDateTime.now(), startTime).toMillis();
-    long endDelay = java.time.Duration.between(LocalDateTime.now(), endTime).toMillis();
+    // Register beacon for neighbor tracking and update message size statistics
+    nodeEstimatorService.registerBeacon(beacon.sourceId());
+    messageSizeService.registerMessageSize(packet.getLength());
 
-    if (startDelay < 0) {
-      throw new IllegalArgumentException("Start time cannot be in the past");
-    }
+    // Get current neighbor count and update rate adaptation immediately
+    int currentNeighborCount = nodeEstimatorService.currentAmountOfNeighbours();
+    double avgMessageSize = messageSizeService.getAverageMessageSize();
 
-    if (endDelay <= startDelay) {
-      throw new IllegalArgumentException("End time must be after start time");
-    }
-
-    // Schedule start
-    scheduler.scheduleOneShotTask("beacon-receiver-start", this::startReceiving, startDelay);
-    
-    // Schedule stop
-    scheduler.scheduleOneShotTask("beacon-receiver-stop", this::stopReceiving, endDelay);
-    
-    System.out.println("BeaconReceiver scheduled to start at " + startTime + " and stop at " + endTime);
+    // Update rate adaptation with latest statistics
+    rateAdaptionService.updateEstimatedNodeCount(currentNeighborCount);
+    rateAdaptionService.updateAverageMessageSize(avgMessageSize);
   }
 
-  private void handleReceivedBeacon(DatagramPacket packet) {
-    try (var bais = new ByteArrayInputStream(packet.getData(), 0, packet.getLength()); var ois = new ObjectInputStream(bais)) {
-      var obj = ois.readObject();
-
-      if (!(obj instanceof Beacon beacon)) {
-        System.err.println("Received non-beacon object: " + obj.getClass().getSimpleName() + " from " + packet.getAddress().getHostAddress() + ":" + packet.getPort());
-        return;
-      }
-
-      // Only process beacons from other nodes (not our own)
-      if (!beacon.sourceId().equals(sourceId)) {
-        // Register beacon for neighbor tracking and update message size statistics
-        nodeEstimatorService.registerBeacon(beacon.sourceId());
-        messageSizeService.registerMessageSize(packet.getLength());
-
-        // Get current neighbor count and update rate adaptation immediately
-        int currentNeighborCount = nodeEstimatorService.currentAmountOfNeighbours();
-        double avgMessageSize = messageSizeService.getAverageMessageSize();
-
-        // Update rate adaptation with latest statistics
-        rateAdaptionService.updateEstimatedNodeCount(currentNeighborCount);
-        rateAdaptionService.updateAverageMessageSize(avgMessageSize);
-
-        System.out.printf("Received beacon from %s | Neighbors: %d | Avg msg size: %.1f | Packet: %d bytes%n", beacon.sourceId(), currentNeighborCount, avgMessageSize, packet.getLength());
-      }
-    } catch (ClassNotFoundException e) {
-      System.err.println("Unknown class in received beacon: " + e.getMessage());
-    } catch (IOException e) {
-      System.err.println("Error deserializing beacon: " + e.getMessage());
-    } catch (Exception e) {
-      System.err.println("Unexpected error handling beacon: " + e.getMessage());
+  private Beacon deserializeBeacon(byte[] data) {
+    if (data.length < 10) {
+      throw new IllegalArgumentException("Invalid beacon data length: " + data.length);
     }
+
+    ByteBuffer buffer = ByteBuffer.wrap(data);
+    short sequenceNumber = buffer.getShort();
+    int sourceId = buffer.getInt();
+    int timestampMs = buffer.getInt();
+
+    return new Beacon(sequenceNumber, sourceId, timestampMs);
   }
 }

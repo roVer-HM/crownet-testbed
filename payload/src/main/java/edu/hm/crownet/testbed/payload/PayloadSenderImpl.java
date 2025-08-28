@@ -1,7 +1,6 @@
 package edu.hm.crownet.testbed.payload;
 
 import edu.hm.crownet.testbed.analytics.MetricsLoggerImpl;
-import edu.hm.crownet.testbed.client.UdpClient;
 import edu.hm.crownet.testbed.client.impl.UdpClientImpl;
 import edu.hm.crownet.testbed.payload.data.Payload;
 import edu.hm.crownet.testbed.ratecontrol.MessageSizeService;

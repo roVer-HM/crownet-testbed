@@ -10,7 +10,7 @@ public interface NodeEstimatorService {
    *
    * @param sourceId the unique ID of the sending node
    */
-  void registerBeacon(String sourceId);
+  void registerBeacon(int sourceId);
 
   /**
    * Returns the number of active neighbor within the defined time window.

@@ -1,13 +1,11 @@
 package edu.hm.crownet.testbed.payload;
 
-import edu.hm.crownet.testbed.client.UdpClient;
 import edu.hm.crownet.testbed.client.impl.UdpClientImpl;
 import edu.hm.crownet.testbed.payload.data.Payload;
 import edu.hm.crownet.testbed.ratecontrol.MessageSizeService;
 import edu.hm.crownet.testbed.ratecontrol.NodeEstimatorService;
 import edu.hm.crownet.testbed.ratecontrol.RateAdaptionService;
 import edu.hm.crownet.testbed.scheduler.Scheduler;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;

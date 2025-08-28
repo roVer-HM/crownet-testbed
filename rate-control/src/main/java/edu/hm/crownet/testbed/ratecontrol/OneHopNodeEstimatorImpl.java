@@ -24,7 +24,7 @@ public class OneHopNodeEstimatorImpl implements NodeEstimatorService {
   /**
    * Stores the last seen timestamp (in ms) for each neighbor ID.
    */
-  private final Map<String, Long> neighborTimestamps = new ConcurrentHashMap<>();
+  private final Map<Integer, Long> neighborTimestamps = new ConcurrentHashMap<>();
 
   /**
    * Registers a received beacon from a neighbor node.
@@ -32,7 +32,7 @@ public class OneHopNodeEstimatorImpl implements NodeEstimatorService {
    * @param sourceId the unique identifier of the sending node
    */
   @Override
-  public void registerBeacon(String sourceId) {
+  public void registerBeacon(int sourceId) {
     long now = Instant.now().toEpochMilli();
     neighborTimestamps.put(sourceId, now);
   }

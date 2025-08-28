@@ -3,11 +3,16 @@ package edu.hm.crownet.testbed.beacon.data;
 import java.io.Serializable;
 
 /**
- * Represents a beacon message sent by a node in the network. Contains the source ID of the sending node and
- * the timestamp of when the beacon was sent. Beacons are used for neighbor discovery.
+ * Java Record representing a Beacon packet.
+ * <p>
+ * Fields:
+ * - sequenceNumber: 16-bit sequence number
+ * - sourceId: 32-bit source identifier
+ * - timestampMs: 32-bit timestamp in milliseconds
  */
 public record Beacon(
-        String sourceId,
-        long timestamp
+        short sequenceNumber,
+        int sourceId,
+        int timestampMs
 ) implements Serializable {
 }
