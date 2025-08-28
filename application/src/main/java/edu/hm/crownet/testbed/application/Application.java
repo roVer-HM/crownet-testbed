@@ -12,7 +12,7 @@ import org.springframework.context.annotation.ComponentScan;
         "edu.hm.crownet.testbed.scheduler",
         "edu.hm.crownet.testbed.ratecontrol",
         "edu.hm.crownet.testbed.analytics",
-        "edu.hm.crownet.testbed.payload"
+        "edu.hm.crownet.testbed.message"
 })
 public class Application {
 

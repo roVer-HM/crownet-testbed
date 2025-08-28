@@ -1,7 +1,7 @@
-package edu.hm.crownet.testbed.beacon;
+package edu.hm.crownet.testbed.message;
 
-import edu.hm.crownet.testbed.beacon.data.Beacon;
 import edu.hm.crownet.testbed.client.Sender;
+import edu.hm.crownet.testbed.message.data.Message;
 import edu.hm.crownet.testbed.ratecontrol.MessageSizeService;
 import edu.hm.crownet.testbed.ratecontrol.NodeEstimatorService;
 import edu.hm.crownet.testbed.ratecontrol.RateAdaptionService;
@@ -17,9 +17,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static java.net.InetAddress.getByName;
 
 @Service
-public class BeaconSenderImpl implements BeaconSender {
+public class MessageSenderImpl implements MessageSender {
 
-  private static final String TASK_ID = "beacon-sender";
+  private static final String TASK_ID = "measurement-sender";
 
   @Value("${crownet.testbed.adhoc.node-id}")
   private int sourceId;
@@ -27,10 +27,10 @@ public class BeaconSenderImpl implements BeaconSender {
   @Value("${crownet.testbed.adhoc.broadcast-address}")
   private String broadcastAddress;
 
-  @Value("${crownet.testbed.adhoc.beacon.send-port}")
+  @Value("${crownet.testbed.adhoc.message.send-port}")
   private int sendPort;
 
-  @Value("${crownet.testbed.adhoc.beacon.receive-port}")
+  @Value("${crownet.testbed.adhoc.message.receive-port}")
   private int receivePort;
 
   // Rate Adaption Algorithm
@@ -45,11 +45,11 @@ public class BeaconSenderImpl implements BeaconSender {
   // Handles transmission of outgoing UDP packets
   private Sender sender;
 
-  public BeaconSenderImpl(
+  public MessageSenderImpl(
           Scheduler scheduler,
           @Qualifier("oneHopNodeEstimator") NodeEstimatorService nodeEstimatorService,
-          @Qualifier("beaconRateAdaptionService") RateAdaptionService rateAdaptionService,
-          @Qualifier("beaconMessageSizeService") MessageSizeService messageSizeService
+          @Qualifier("messageRateAdaptionService") RateAdaptionService rateAdaptionService,
+          @Qualifier("messageMessageSizeService") MessageSizeService messageSizeService
   ) {
     this.scheduler = scheduler;
     this.rateAdaptionService = rateAdaptionService;
@@ -91,8 +91,8 @@ public class BeaconSenderImpl implements BeaconSender {
 
   private void transmit() {
     try {
-      Beacon beacon = createBeacon();
-      byte[] data = serializeBeacon(beacon);
+      Message message = createMessage();
+      byte[] data = serializeMessage(message);
       DatagramPacket packet = new DatagramPacket(data, data.length, getByName(broadcastAddress), receivePort);
       sender.send(packet);
 
@@ -109,21 +109,23 @@ public class BeaconSenderImpl implements BeaconSender {
     }
   }
 
-  private Beacon createBeacon() {
+  private Message createMessage() {
     short seqNo = (short) (sequenceNumber.getAndIncrement() & 0xFFFF);
     int timestamp = (int) (System.currentTimeMillis() % Integer.MAX_VALUE);
-    // Dummy payload to ensure the Beacon reaches ~300 bit (≈38B) total size.
+    // Dummy payload to ensure the Message reaches 11200 bit (1400 B) total size.
     // Required so that application-layer packet size matches the configuration
     // assumed in simulations executed by the lecturer.
-    byte[] dummyPayload = new byte[28];
-    return new Beacon(seqNo, sourceId, timestamp, dummyPayload);
+    byte[] dummyPayload = new byte[1390];
+    return new Message(seqNo, sourceId, timestamp, dummyPayload);
   }
 
-  private byte[] serializeBeacon(Beacon beacon) {
-    ByteBuffer buffer = ByteBuffer.allocate(38);
-    buffer.putShort(beacon.sequenceNumber());
-    buffer.putInt(beacon.sourceId());
-    buffer.putInt(beacon.timestampMs());
+  private byte[] serializeMessage(Message message) {
+    ByteBuffer buffer = ByteBuffer.allocate(1400);
+    buffer.putShort(message.sequenceNumber());
+    buffer.putInt(message.sourceId());
+    buffer.putInt(message.timestampMs());
+    buffer.put(message.payload());
+
     return buffer.array();
   }
-}
+} 

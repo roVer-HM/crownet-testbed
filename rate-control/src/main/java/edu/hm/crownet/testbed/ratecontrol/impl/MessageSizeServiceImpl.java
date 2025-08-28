@@ -1,11 +1,10 @@
-package edu.hm.crownet.testbed.ratecontrol;
+package edu.hm.crownet.testbed.ratecontrol.impl;
 
-import org.springframework.stereotype.Service;
+import edu.hm.crownet.testbed.ratecontrol.MessageSizeService;
 
 /**
  * Service for calculating the average message size using an exponential moving average.
  */
-@Service
 public class MessageSizeServiceImpl implements MessageSizeService {
 
   /**

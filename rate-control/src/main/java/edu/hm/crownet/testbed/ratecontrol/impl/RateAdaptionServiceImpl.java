@@ -1,6 +1,6 @@
-package edu.hm.crownet.testbed.ratecontrol;
+package edu.hm.crownet.testbed.ratecontrol.impl;
 
-import org.springframework.stereotype.Service;
+import edu.hm.crownet.testbed.ratecontrol.RateAdaptionService;
 
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -11,13 +11,7 @@ import static java.lang.Math.max;
  * Service for adaptive transmission rate control based on node density and message size,
  * implementing the ARC-DSA algorithm with timer reconsideration.
  */
-@Service
 public class RateAdaptionServiceImpl implements RateAdaptionService {
-
-  /**
-   * Maximum application bandwidth in bytes per second.
-   */
-  private static final double MAX_APPLICATION_BANDWIDTH = 500.0;
 
   /**
    * Minimum sending interval in milliseconds.
@@ -31,10 +25,19 @@ public class RateAdaptionServiceImpl implements RateAdaptionService {
    */
   private static final double CORRECTION_FACTOR = exp(-2.0 / 3.0);
 
+  /**
+   * Maximum application bandwidth in bytes per second.
+   */
+  private final double bandwidthBytesPerSec;
+
   private int currentNodeEstimate = 1;
   private double estimatedAvgPacketSize = -1;
 
   private long lastPlannedTPrime = -1;
+
+  public RateAdaptionServiceImpl(double bandwidthBytesPerSec) {
+    this.bandwidthBytesPerSec = bandwidthBytesPerSec;
+  }
 
   @Override
   public void updateEstimatedNodeCount(int nodeCount) {
@@ -81,6 +84,6 @@ public class RateAdaptionServiceImpl implements RateAdaptionService {
   // Returns base interval without randomization.
   private long calculateT() {
     if (estimatedAvgPacketSize <= 0) return MINIMUM_SENDING_INTERVAL_MILLIS;
-    return (long) (((currentNodeEstimate * estimatedAvgPacketSize) / MAX_APPLICATION_BANDWIDTH) * 1000.0);
+    return (long) (((currentNodeEstimate * estimatedAvgPacketSize) / bandwidthBytesPerSec) * 1000.0);
   }
 }

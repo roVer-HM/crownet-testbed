@@ -1,7 +1,7 @@
-package edu.hm.crownet.testbed.beacon;
+package edu.hm.crownet.testbed.message;
 
-import edu.hm.crownet.testbed.beacon.data.Beacon;
 import edu.hm.crownet.testbed.client.Receiver;
+import edu.hm.crownet.testbed.message.data.Message;
 import edu.hm.crownet.testbed.ratecontrol.MessageSizeService;
 import edu.hm.crownet.testbed.ratecontrol.NodeEstimatorService;
 import edu.hm.crownet.testbed.ratecontrol.RateAdaptionService;
@@ -13,12 +13,12 @@ import java.net.DatagramPacket;
 import java.nio.ByteBuffer;
 
 @Service
-public class BeaconReceiverImpl implements BeaconReceiver {
+public class MessageReceiverImpl implements MessageReceiver {
 
   @Value("${crownet.testbed.adhoc.node-id}")
   private int sourceId;
 
-  @Value("${crownet.testbed.adhoc.beacon.receive-port}")
+  @Value("${crownet.testbed.adhoc.message.receive-port}")
   private int receivePort;
 
   // Rate Adaption Algorithm
@@ -29,10 +29,10 @@ public class BeaconReceiverImpl implements BeaconReceiver {
   // Responsible for receiving UDP packets from the network
   private Receiver receiver;
 
-  public BeaconReceiverImpl(
+  public MessageReceiverImpl(
           @Qualifier("oneHopNodeEstimator") NodeEstimatorService nodeEstimatorService,
-          @Qualifier("beaconMessageSizeService") MessageSizeService messageSizeService,
-          @Qualifier("beaconRateAdaptionService") RateAdaptionService rateAdaptionService
+          @Qualifier("messageMessageSizeService") MessageSizeService messageSizeService,
+          @Qualifier("messageRateAdaptionService") RateAdaptionService rateAdaptionService
   ) {
     this.nodeEstimatorService = nodeEstimatorService;
     this.messageSizeService = messageSizeService;
@@ -51,11 +51,10 @@ public class BeaconReceiverImpl implements BeaconReceiver {
   }
 
   private void handlePacket(DatagramPacket packet) {
-    Beacon beacon = deserializeBeacon(packet.getData());
+    Message beacon = deserializeMessage(packet.getData());
     if (beacon.sourceId() == sourceId) return;
 
-    // Register beacon for neighbor tracking and update message size statistics
-    nodeEstimatorService.registerBeacon(beacon.sourceId());
+    // Update message size statistics
     messageSizeService.registerMessageSize(packet.getLength());
 
     // Get current neighbor count and update rate adaptation immediately
@@ -67,18 +66,14 @@ public class BeaconReceiverImpl implements BeaconReceiver {
     rateAdaptionService.updateAverageMessageSize(avgMessageSize);
   }
 
-  private Beacon deserializeBeacon(byte[] data) {
-    if (data.length < 38) {
-      throw new IllegalArgumentException("Invalid beacon data length: " + data.length);
-    }
-
+  private Message deserializeMessage(byte[] data) {
     ByteBuffer buffer = ByteBuffer.wrap(data);
-    short sequenceNumber = buffer.getShort();
+    short seqNo = buffer.getShort();
     int sourceId = buffer.getInt();
-    int timestampMs = buffer.getInt();
-    byte[] payload = new byte[38];
+    int timestamp = buffer.getInt();
+    byte[] payload = new byte[1390];
     buffer.get(payload);
 
-    return new Beacon(sequenceNumber, sourceId, timestampMs, payload);
+    return new Message(seqNo, sourceId, timestamp, payload);
   }
-}
+} 
