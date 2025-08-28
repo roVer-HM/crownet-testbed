@@ -68,10 +68,6 @@ public class BeaconReceiverImpl implements BeaconReceiver {
   }
 
   private Beacon deserializeBeacon(byte[] data) {
-    if (data.length < 38) {
-      throw new IllegalArgumentException("Invalid beacon data length: " + data.length);
-    }
-
     ByteBuffer buffer = ByteBuffer.wrap(data);
     short sequenceNumber = buffer.getShort();
     int sourceId = buffer.getInt();

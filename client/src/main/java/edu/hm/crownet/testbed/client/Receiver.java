@@ -49,8 +49,7 @@ public class Receiver implements Runnable {
   public void run() {
     while (running && socket != null && !socket.isClosed()) {
       try {
-        // TODO Fix buffer size. Beacons are 38 B and Messages are 1400 B.
-        byte[] receiveBuffer = new byte[1024];  // adjust size as needed
+        byte[] receiveBuffer = new byte[1500];  // adjust size as needed
         DatagramPacket receivePacket = new DatagramPacket(receiveBuffer, receiveBuffer.length);
         socket.receive(receivePacket);
         if (packetHandler != null) {
