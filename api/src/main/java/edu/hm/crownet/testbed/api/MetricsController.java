@@ -2,6 +2,8 @@ package edu.hm.crownet.testbed.api;
 
 import edu.hm.crownet.testbed.analytics.BeaconLog;
 import edu.hm.crownet.testbed.analytics.BeaconLogger;
+import edu.hm.crownet.testbed.analytics.MessageLog;
+import edu.hm.crownet.testbed.analytics.MessageLogger;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +25,7 @@ public class MetricsController {
   private int sourceId;
 
   @GetMapping("/beacons")
-  public ResponseEntity<List<BeaconLog>> getLogs() {
+  public ResponseEntity<List<BeaconLog>> getBeaconLogs() {
     try {
       Path logPath = Path.of("/var/log/crownet", "beacons-node-" + sourceId + ".csv");
       BeaconLogger logger = new BeaconLogger(logPath.toString());
@@ -36,10 +38,36 @@ public class MetricsController {
   }
 
   @DeleteMapping("/beacons")
-  public ResponseEntity<Void> clearLogs() {
+  public ResponseEntity<Void> clearBeaconLogs() {
     try {
       Path logPath = Path.of("/var/log/crownet", "beacons-node-" + sourceId + ".csv");
       BeaconLogger logger = new BeaconLogger(logPath.toString());
+      logger.clear();
+      logger.close();
+      return ResponseEntity.noContent().build();
+    } catch (IOException e) {
+      return ResponseEntity.internalServerError().build();
+    }
+  }
+
+  @GetMapping("/messages")
+  public ResponseEntity<List<MessageLog>> getMessageLogs() {
+    try {
+      Path logPath = Path.of("/var/log/crownet", "messages-node-" + sourceId + ".csv");
+      MessageLogger logger = new MessageLogger(logPath.toString());
+      List<MessageLog> logs = logger.readAll();
+      logger.close();
+      return ResponseEntity.ok(logs);
+    } catch (IOException e) {
+      return ResponseEntity.internalServerError().build();
+    }
+  }
+
+  @DeleteMapping("/messages")
+  public ResponseEntity<Void> clearMessageLogs() {
+    try {
+      Path logPath = Path.of("/var/log/crownet", "messages-node-" + sourceId + ".csv");
+      MessageLogger logger = new MessageLogger(logPath.toString());
       logger.clear();
       logger.close();
       return ResponseEntity.noContent().build();

@@ -3,6 +3,8 @@ package edu.hm.crownet.testbed.api;
 import edu.hm.crownet.testbed.api.dto.ExperimentScheduleRequest;
 import edu.hm.crownet.testbed.beacon.BeaconReceiver;
 import edu.hm.crownet.testbed.beacon.BeaconSender;
+import edu.hm.crownet.testbed.message.MessageReceiver;
+import edu.hm.crownet.testbed.message.MessageSender;
 import edu.hm.crownet.testbed.scheduler.Scheduler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +22,8 @@ public class ExperimentController {
 
   private final BeaconSender beaconSender;
   private final BeaconReceiver beaconReceiver;
+  private final MessageSender messageSender;
+  private final MessageReceiver messageReceiver;
   private final Scheduler scheduler;
 
   @PostMapping("/schedule")
@@ -36,12 +40,16 @@ public class ExperimentController {
     scheduler.scheduleOneShotTask("start", () -> {
       beaconReceiver.receive();
       beaconSender.send(request.isUseRateAdaption());
+      messageReceiver.receive();
+      messageSender.send();
     }, startDelay);
 
     // Schedule stop task
     scheduler.scheduleOneShotTask("stop", () -> {
       beaconSender.stop();
       beaconReceiver.stop();
+      messageSender.stop();
+      messageReceiver.stop();
     }, endDelay);
 
     System.out.printf("Experiment scheduled | Start=%s (in %d ms) | End=%s (in %d ms)%n", startTime, startDelay, endTime, endDelay);

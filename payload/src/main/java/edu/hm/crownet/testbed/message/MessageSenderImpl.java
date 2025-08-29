@@ -1,5 +1,7 @@
 package edu.hm.crownet.testbed.message;
 
+import edu.hm.crownet.testbed.analytics.MessageLog;
+import edu.hm.crownet.testbed.analytics.MessageLogger;
 import edu.hm.crownet.testbed.client.Sender;
 import edu.hm.crownet.testbed.message.data.Message;
 import edu.hm.crownet.testbed.ratecontrol.MessageSizeService;
@@ -12,6 +14,8 @@ import org.springframework.stereotype.Service;
 
 import java.net.DatagramPacket;
 import java.nio.ByteBuffer;
+import java.nio.file.Path;
+import java.sql.Timestamp;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.net.InetAddress.getByName;
@@ -39,11 +43,14 @@ public class MessageSenderImpl implements MessageSender {
   private final MessageSizeService messageSizeService;
   private final NodeEstimatorService nodeEstimatorService;
 
-  // Beacon handling
+  // Message handling
   private final AtomicInteger sequenceNumber = new AtomicInteger(0);
 
   // Handles transmission of outgoing UDP packets
   private Sender sender;
+
+  // Used for analysis
+  private MessageLogger messageLogger;
 
   public MessageSenderImpl(
           Scheduler scheduler,
@@ -65,14 +72,32 @@ public class MessageSenderImpl implements MessageSender {
       sender.close();
       sender = null;
     }
+    try {
+      if (messageLogger != null) messageLogger.close();
+    } catch (Exception ignored) {
+    }
   }
 
   @Override
   public void send() {
+    try {
+      Path logPath = Path.of("/var/log/crownet", "messages-node-" + sourceId + ".csv");
+      messageLogger = new MessageLogger(logPath.toString());
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to open message log", e);
+    }
+
     sender = new Sender();
     sender.initialize(sendPort);
 
     long initialDelay = rateAdaptionService.obtainNextTransmissionTime();
+    System.out.printf(
+            "MessageSender initialized | Node=%d | Log=%s | SendPort=%d | First send in %d ms%n",
+            sourceId,
+            "/var/log/crownet/messages-node-" + sourceId + ".csv",
+            sendPort,
+            initialDelay
+    );
     delayTransmission(initialDelay);
   }
 
@@ -96,6 +121,21 @@ public class MessageSenderImpl implements MessageSender {
       DatagramPacket packet = new DatagramPacket(data, data.length, getByName(broadcastAddress), receivePort);
       sender.send(packet);
 
+      //
+      // Logging of sent message
+      //
+      if (messageLogger != null) {
+        messageLogger.log(new MessageLog(
+                new Timestamp(System.currentTimeMillis()),
+                sourceId,
+                message.sequenceNumber() & 0xFFFF, // cast short to unsigned: ensures sequence number is always 0–65535 instead of negative values
+                data.length
+        ));
+      }
+
+      //
+      // Update of parameters used for adaptive rate adaption algorithm.
+      //
       messageSizeService.registerMessageSize(data.length);
       var avgMessageSize = messageSizeService.getAverageMessageSize();
       var nodeCount = nodeEstimatorService.currentAmountOfNeighbours();
@@ -104,8 +144,18 @@ public class MessageSenderImpl implements MessageSender {
 
       long delay = rateAdaptionService.obtainNextTransmissionTime();
       delayTransmission(delay);
+
+      System.out.printf(
+              "Sent message seq=%d | SourceId=%d | Size=%d B | Neighbors=%d | Avg msg size=%.1f B | Next interval=%d ms%n",
+              message.sequenceNumber() & 0xFFFF,
+              sourceId,
+              data.length,
+              nodeCount,
+              avgMessageSize,
+              delay
+      );
     } catch (Exception e) {
-      throw new RuntimeException("Beacon sending failed", e);
+      throw new RuntimeException("Message sending failed", e);
     }
   }
 
