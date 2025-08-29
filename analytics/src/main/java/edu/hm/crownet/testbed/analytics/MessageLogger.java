@@ -12,7 +12,7 @@ import java.util.List;
 
 public class MessageLogger {
 
-  private FileWriter writer;         
+  private FileWriter writer;
   private final String filePath;
 
   public MessageLogger(String filePath) throws IOException {

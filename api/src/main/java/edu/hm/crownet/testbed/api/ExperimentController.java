@@ -41,7 +41,7 @@ public class ExperimentController {
       beaconReceiver.receive();
       beaconSender.send(request.isUseRateAdaption());
       messageReceiver.receive();
-      messageSender.send();
+      messageSender.send(request.isUseRateAdaption());
     }, startDelay);
 
     // Schedule stop task

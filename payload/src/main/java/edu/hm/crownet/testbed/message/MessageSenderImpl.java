@@ -79,7 +79,7 @@ public class MessageSenderImpl implements MessageSender {
   }
 
   @Override
-  public void send() {
+  public void send(boolean useRateAdaption) {
     try {
       Path logPath = Path.of("/var/log/crownet", "messages-node-" + sourceId + ".csv");
       messageLogger = new MessageLogger(logPath.toString());
@@ -90,15 +90,28 @@ public class MessageSenderImpl implements MessageSender {
     sender = new Sender();
     sender.initialize(sendPort);
 
-    long initialDelay = rateAdaptionService.obtainNextTransmissionTime();
-    System.out.printf(
-            "MessageSender initialized | Node=%d | Log=%s | SendPort=%d | First send in %d ms%n",
-            sourceId,
-            "/var/log/crownet/messages-node-" + sourceId + ".csv",
-            sendPort,
-            initialDelay
-    );
-    delayTransmission(initialDelay);
+    if (!useRateAdaption) {
+      System.out.printf(
+              "MessageSender initialized (fixed interval) | Node=%d | Log=%s | SendPort=%d | Interval=%d ms%n",
+              sourceId,
+              "/var/log/crownet/messages-node-" + sourceId + ".csv",
+              sendPort,
+              100
+      );
+
+      // Start recurring task every 100 ms, immediately
+      scheduler.scheduleTask(TASK_ID, this::stupidTransmit, 100, 100);
+    } else {
+      long initialDelay = rateAdaptionService.obtainNextTransmissionTime();
+      System.out.printf(
+              "MessageSender initialized | Node=%d | Log=%s | SendPort=%d | First send in %d ms%n",
+              sourceId,
+              "/var/log/crownet/messages-node-" + sourceId + ".csv",
+              sendPort,
+              initialDelay
+      );
+      delayTransmission(initialDelay);
+    }
   }
 
   private void delayTransmission(long delay) {
@@ -154,6 +167,29 @@ public class MessageSenderImpl implements MessageSender {
               avgMessageSize,
               delay
       );
+    } catch (Exception e) {
+      throw new RuntimeException("Message sending failed", e);
+    }
+  }
+
+  private void stupidTransmit() {
+    try {
+      Message message = createMessage();
+      byte[] data = serializeMessage(message);
+      DatagramPacket packet = new DatagramPacket(data, data.length, getByName(broadcastAddress), receivePort);
+      sender.send(packet);
+
+      if (messageLogger != null) {
+        messageLogger.log(new MessageLog(
+                new Timestamp(System.currentTimeMillis()),
+                sourceId,
+                message.sequenceNumber() & 0xFFFF,
+                data.length
+        ));
+      }
+
+      // Update EMA so metrics/logging remain consistent
+      messageSizeService.registerMessageSize(data.length);
     } catch (Exception e) {
       throw new RuntimeException("Message sending failed", e);
     }

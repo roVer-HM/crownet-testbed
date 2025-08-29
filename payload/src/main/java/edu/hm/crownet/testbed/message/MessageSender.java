@@ -4,5 +4,5 @@ public interface MessageSender {
 
   void stop();
 
-  void send();
+  void send(boolean useRateAdaption);
 }
