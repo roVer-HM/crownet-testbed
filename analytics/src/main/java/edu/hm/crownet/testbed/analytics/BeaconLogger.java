@@ -12,7 +12,7 @@ import java.util.List;
 
 public class BeaconLogger {
 
-  private final FileWriter writer;
+  private FileWriter writer;          // <- nicht final, damit wir neu öffnen können
   private final String filePath;
 
   public BeaconLogger(String filePath) throws IOException {
@@ -28,19 +28,29 @@ public class BeaconLogger {
     this.writer = new FileWriter(filePath, true);
     if (empty) {
       writer.write("timestamp,sourceId,sequenceNo,sizeBytes\n");
+      writer.flush();
     }
   }
 
   public synchronized void log(BeaconLog log) throws IOException {
     writer.write(String.format("%s,%d,%d,%d%n",
-            log.timestamp().getTime(), // ms since epoch
+            log.timestamp().getTime(),
             log.sourceId(),
             log.sequenceNo(),
             log.sizeBytes()));
     writer.flush();
   }
 
-  public void close() throws IOException {
+  public synchronized void clear() throws IOException {
+    writer.close();
+    try (FileWriter w = new FileWriter(filePath, false)) {
+      w.write("timestamp,sourceId,sequenceNo,sizeBytes\n");
+      w.flush();
+    }
+    this.writer = new FileWriter(filePath, true);
+  }
+
+  public synchronized void close() throws IOException {
     writer.close();
   }
 

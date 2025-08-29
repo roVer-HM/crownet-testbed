@@ -41,3 +41,46 @@ python3 push_schedule.py \
 --hosts ./hosts.txt \
 --time-limit 56 \
 --start 2025-08-14T12:05:00
+
+
+
+# Always
+# 1) Always ohne Adaption
+python3 orchestrate.py --pattern always --hosts hosts.txt \
+--time-limit 560 --start-offset 60
+
+# 2) Always mit Adaption, ohne Randomisierung
+python3 orchestrate.py --pattern always --hosts hosts.txt \
+--time-limit 560 --start-offset 60 --use-rate-adaption
+
+# 3) Always mit Adaption + Randomisierung
+python3 orchestrate.py --pattern always --hosts hosts.txt \
+--time-limit 560 --start-offset 60 --use-rate-adaption
+
+# Ramp
+# 1) Ramp ohne Adaption
+python3 orchestrate.py --pattern ramp --hosts hosts.txt \
+--time-limit 560 --start-offset 60
+
+# 2) Ramp mit Adaption, ohne Randomisierung
+python3 orchestrate.py --pattern ramp --hosts hosts.txt \
+--time-limit 560 --start-offset 60 --use-rate-adaption
+
+# 3) Ramp mit Adaption + Randomisierung
+python3 orchestrate.py --pattern ramp --hosts hosts.txt \
+--time-limit 560 --start-offset 60 --use-rate-adaption
+
+# Bursts
+# 1) Bursts ohne Adaption
+python3 orchestrate.py --pattern bursts --hosts hosts.txt \
+--time-limit 560 --start-offset 60
+
+# 2) Bursts mit Adaption, ohne Randomisierung
+python3 orchestrate.py --pattern bursts --hosts hosts.txt \
+--time-limit 560 --start-offset 60 --use-rate-adaption
+
+# 3) Bursts mit Adaption + Randomisierung
+python3 orchestrate.py --pattern bursts --hosts hosts.txt \
+--time-limit 560 --start-offset 60 --use-rate-adaption
+
+python3 test.py --bmax 1000 --window 5
