@@ -35,7 +35,7 @@ public class ExperimentController {
     // Schedule start task
     scheduler.scheduleOneShotTask("start", () -> {
       beaconReceiver.receive();
-      beaconSender.send();
+      beaconSender.send(request.isUseRateAdaption());
     }, startDelay);
 
     // Schedule stop task
@@ -44,6 +44,7 @@ public class ExperimentController {
       beaconReceiver.stop();
     }, endDelay);
 
+    System.out.printf("Experiment scheduled | Start=%s (in %d ms) | End=%s (in %d ms)%n", startTime, startDelay, endTime, endDelay);
     return ResponseEntity.ok().build();
   }
 }

@@ -2,8 +2,6 @@ package edu.hm.crownet.testbed.ratecontrol.impl;
 
 import edu.hm.crownet.testbed.ratecontrol.RateAdaptionService;
 
-import java.util.concurrent.ThreadLocalRandom;
-
 import static java.lang.Math.exp;
 import static java.lang.Math.max;
 
@@ -41,7 +39,7 @@ public class RateAdaptionServiceImpl implements RateAdaptionService {
 
   @Override
   public void updateEstimatedNodeCount(int nodeCount) {
-    this.currentNodeEstimate = Math.max(1, nodeCount);
+    this.currentNodeEstimate = Math.max(1, nodeCount + 1);
   }
 
   @Override
@@ -75,15 +73,26 @@ public class RateAdaptionServiceImpl implements RateAdaptionService {
   }
 
   // Returns randomized and corrected interval in milliseconds.
-  private long calculateTPrime() {
-    long base = calculateT();
-    double randomized = ThreadLocalRandom.current().nextDouble(0.5 * base, 1.5 * base);
-    return (long) max(MINIMUM_SENDING_INTERVAL_MILLIS, randomized / CORRECTION_FACTOR);
-  }
+  // private long calculateTPrime() {
+  //  long base = calculateT();
+  //  double randomized = ThreadLocalRandom.current().nextDouble(0.5 * base, 1.5 * base);
+  //  return (long) max(MINIMUM_SENDING_INTERVAL_MILLIS, randomized / CORRECTION_FACTOR);
+  // }
 
   // Returns base interval without randomization.
   private long calculateT() {
     if (estimatedAvgPacketSize <= 0) return MINIMUM_SENDING_INTERVAL_MILLIS;
     return (long) (((currentNodeEstimate * estimatedAvgPacketSize) / bandwidthBytesPerSec) * 1000.0);
+  }
+
+  // Returns (randomized) interval in milliseconds.
+  private long calculateTPrime() {
+    long base = calculateT();
+
+    // --- Randomisierung abschalten (immer deterministisch) ---
+    // double randomized = ThreadLocalRandom.current().nextDouble(0.5 * base, 1.5 * base);
+    // return (long) max(MINIMUM_SENDING_INTERVAL_MILLIS, randomized / CORRECTION_FACTOR);
+
+    return (long) max(MINIMUM_SENDING_INTERVAL_MILLIS, base);
   }
 }

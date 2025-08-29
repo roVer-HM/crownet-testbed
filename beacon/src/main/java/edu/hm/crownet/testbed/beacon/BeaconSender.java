@@ -4,5 +4,5 @@ public interface BeaconSender {
 
   void stop();
 
-  void send();
+  void send(boolean useRateAdaption);
 }

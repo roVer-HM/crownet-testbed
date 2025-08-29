@@ -65,6 +65,14 @@ public class BeaconReceiverImpl implements BeaconReceiver {
     // Update rate adaptation with latest statistics
     rateAdaptionService.updateEstimatedNodeCount(currentNeighborCount);
     rateAdaptionService.updateAverageMessageSize(avgMessageSize);
+
+    System.out.printf(
+            "Received beacon from node %d | Neighbors: %d | Avg msg size: %.1f B | Packet size: %d B%n",
+            beacon.sourceId(),
+            currentNeighborCount,
+            avgMessageSize,
+            packet.getLength()
+    );
   }
 
   private Beacon deserializeBeacon(byte[] data) {

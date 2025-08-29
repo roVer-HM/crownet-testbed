@@ -2,35 +2,24 @@ package edu.hm.crownet.testbed.ratecontrol.impl;
 
 import edu.hm.crownet.testbed.ratecontrol.MessageSizeService;
 
-/**
- * Service for calculating the average message size using an exponential moving average.
- */
 public class MessageSizeServiceImpl implements MessageSizeService {
 
-  /**
-   * Estimated average message size in bytes.
-   */
+  private final double alpha;
   private double averageMessageSize;
 
-  /**
-   * Returns the current estimate of the average message size.
-   *
-   * @return the average message size in bytes
-   */
-  @Override
-  public double getAverageMessageSize() {
-    return this.averageMessageSize;
+  public MessageSizeServiceImpl(double alpha, double initialBytes) {
+    this.alpha = alpha;
+    this.averageMessageSize = initialBytes;
   }
 
-  /**
-   * Registers a new observed message size and updates the estimate
-   * using exponential smoothing.
-   *
-   * @param length the length of the new message in bytes
-   */
   @Override
-  public void registerMessageSize(int length) {
-    double smoothingFactor = 0.1;
-    this.averageMessageSize = smoothingFactor * length + (1 - smoothingFactor) * this.averageMessageSize;
+  public synchronized double getAverageMessageSize() {
+    return averageMessageSize;
+  }
+
+  @Override
+  public synchronized void registerMessageSize(int length) {
+    if (length < 0) return;
+    averageMessageSize = alpha * length + (1.0 - alpha) * averageMessageSize;
   }
 }
