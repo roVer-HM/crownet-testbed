@@ -83,4 +83,5 @@ python3 orchestrate.py --pattern bursts --hosts hosts.txt \
 python3 orchestrate.py --pattern bursts --hosts hosts.txt \
 --time-limit 560 --start-offset 60 --use-rate-adaption
 
-python3 test.py --bmax 1000 --window 5
+python3 beacon_analysis.py --bmax 2000 --window 5
+python3 message_analysis.py --bmax 62500 --window 5

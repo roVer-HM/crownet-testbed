@@ -96,9 +96,13 @@ def main():
     if not hosts:
         sys.exit("ERROR: hosts.txt ist leer.")
 
+    # Hardcoded path for this script
+    SCHEDULE_PATH = "/api/v1/nodes/schedule"
+    schedule_hosts = [f"{host.rstrip('/')}{SCHEDULE_PATH}" for host in hosts]
+
     base_epoch = base_start_epoch(args.start, args.start_offset)
 
-    print(f"[INFO] Hosts: {len(hosts)}")
+    print(f"[INFO] Hosts: {len(schedule_hosts)}")
     print(f"[INFO] Pattern: {args.pattern}")
     print(f"[INFO] timeLimit: {args.time_limit:.3f}s")
     print(f"[INFO] base start: {iso_no_tz(base_epoch)} (epoch={int(base_epoch)})")
@@ -107,8 +111,8 @@ def main():
     print()
 
     jobs = []
-    for i, url in enumerate(hosts):
-        start_off, stop_off = offsets_for(args.pattern, i, args.time_limit, len(hosts))
+    for i, url in enumerate(schedule_hosts):
+        start_off, stop_off = offsets_for(args.pattern, i, args.time_limit, len(schedule_hosts))
         payload = {
             "startTime": iso_no_tz(base_epoch + start_off),
             "endTime":   iso_no_tz(base_epoch + stop_off),
