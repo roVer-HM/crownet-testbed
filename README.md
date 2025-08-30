@@ -45,7 +45,7 @@ python3 push_schedule.py \
 
 
 # Always
-# 1) Always ohne Adaption
+# 1) Always ohne Adaption (CHECK)
 python3 orchestrate.py --pattern always --hosts hosts.txt \
 --time-limit 560 --start-offset 60
 
@@ -58,7 +58,7 @@ python3 orchestrate.py --pattern always --hosts hosts.txt \
 --time-limit 560 --start-offset 60 --use-rate-adaption
 
 # Ramp
-# 1) Ramp ohne Adaption
+# 1) Ramp ohne Adaption (CHECK)
 python3 orchestrate.py --pattern ramp --hosts hosts.txt \
 --time-limit 560 --start-offset 60
 
