@@ -8,7 +8,7 @@ The script `scripts/orchestrate.py` was used to orchestrate the scenarios on the
 
 ## 📂 Folder Structure
 ```
-laboratory-books/
+laboratory/
 │
 ├── plots/                       # Generated plots (PDF/PNG) for thesis
 │
