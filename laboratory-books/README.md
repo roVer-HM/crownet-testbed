@@ -1,7 +1,6 @@
 # ARC-DSA Experiments – Jupyter Notebooks
 
-This folder contains the Jupyter notebooks used to analyze experimental data for my bachelor thesis on **Adaptive Rate Control for Decentralized Sensing Applications (ARC-DSA)**.  
-The notebooks document the evaluation of different network load scenarios and serve as a digital **lab journal**. 
+This folder contains the Jupyter notebooks used to analyze experimental data for my bachelor thesis on **Adaptive Rate Control for Decentralized Sensing Applications (ARC-DSA)**. The notebooks document the evaluation of different network load scenarios and serve as a digital **lab journal**. 
 
 The script `scripts/orchestrate.py` was used to orchestrate the scenarios on the physical testbed.
 
