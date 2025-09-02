@@ -92,6 +92,4 @@ public class RateAdaptionServiceImpl implements RateAdaptionService {
     if (estimatedAvgPacketSize <= 0) return MINIMUM_SENDING_INTERVAL_MILLIS;
     return (long) (((currentNodeEstimate * estimatedAvgPacketSize) / bandwidthBytesPerSec) * 1000.0);
   }
-
-
 }

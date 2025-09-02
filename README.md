@@ -45,15 +45,11 @@ python3 push_schedule.py \
 
 
 # Always
-# 1) Always ohne Adaption (CHECK)
+# 1) Always ohne Adaption (CHECK - 4)
 python3 orchestrate.py --pattern always --hosts hosts.txt \
 --time-limit 560 --start-offset 60
 
-# 2) Always mit Adaption, ohne Randomisierung
-python3 orchestrate.py --pattern always --hosts hosts.txt \
---time-limit 560 --start-offset 60 --use-rate-adaption
-
-# 3) Always mit Adaption + Randomisierung
+# 2) Always mit Adaption + Randomisierung (CHECK - 4)
 python3 orchestrate.py --pattern always --hosts hosts.txt \
 --time-limit 560 --start-offset 60 --use-rate-adaption
 
@@ -62,7 +58,7 @@ python3 orchestrate.py --pattern always --hosts hosts.txt \
 python3 orchestrate.py --pattern ramp --hosts hosts.txt \
 --time-limit 560 --start-offset 60
 
-# 2) Ramp mit Adaption, ohne Randomisierung
+# 2) Ramp mit Adaption, ohne Randomisierung 
 python3 orchestrate.py --pattern ramp --hosts hosts.txt \
 --time-limit 560 --start-offset 60 --use-rate-adaption
 
@@ -83,5 +79,5 @@ python3 orchestrate.py --pattern bursts --hosts hosts.txt \
 python3 orchestrate.py --pattern bursts --hosts hosts.txt \
 --time-limit 560 --start-offset 60 --use-rate-adaption
 
-python3 beacon_analysis.py --bmax 2000 --window 5
-python3 message_analysis.py --bmax 62500 --window 5
+python3 live_beacon_analysis.py --bmax 2000 --window 5
+python3 live_message_analysis.py --bmax 62500 --window 5
