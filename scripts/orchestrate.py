@@ -1,146 +1,139 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+"""
+Schedule ARC-DSA scenarios on all testbed nodes via HTTP POST.
 
-import argparse
-import concurrent.futures as cf
-import datetime as dt
-import json
-import sys
-import time
+This script sends start and end times for experiments to each node’s
+`/api/v1/nodes/schedule` endpoint. It supports different traffic patterns
+(always, ramp, bursts) and provides emoji-enhanced output.
+
+Features:
+- Reads hosts from a file (default: hosts.txt).
+- Supports experiment patterns:
+  * always  → all nodes active for the full duration
+  * ramp    → nodes start/stop gradually across the experiment
+  * bursts  → groups of nodes active in overlapping time windows
+- Base start time can be given as ISO string or relative offset in seconds.
+- Configurable total duration (`--time-limit`), concurrency, retries, and timeouts.
+- Dry-run mode (`--dry-run`) prints the planned schedule without sending.
+"""
+
+import argparse, concurrent.futures as cf, datetime as dt, json, sys, time
 from pathlib import Path
-
 import requests
 
-DENOM = 56.0  # wie in der Simulationsdatei
+GREEN="\033[92m"; RED="\033[91m"; YELLOW="\033[93m"; CYAN="\033[96m"; RESET="\033[0m"; BOLD="\033[1m"
+
+DENOM = 56.0
 
 def parse_args():
-    p = argparse.ArgumentParser(
-        description="Sende Start/End-Zeiten für ARC-DSA-Muster an alle Hosts per HTTP POST."
-    )
+    p = argparse.ArgumentParser(description="Send start/end times for ARC-DSA patterns to all hosts via HTTP POST.")
     p.add_argument("--pattern", required=True, choices=["always", "ramp", "bursts"],
-                   help="Muster: always | ramp | bursts (wie in der Simulationsdatei)")
-    p.add_argument("--hosts", required=True, help="Pfad zu hosts.txt (eine URL pro Zeile)")
-    p.add_argument("--time-limit", type=float, default=56.0,
-                   help="Gesamtdauer (Sek.) für das Szenario, default 56.0")
-    p.add_argument("--start", default=None,
-                   help="Basis-Startzeit als ISO 'YYYY-MM-DDTHH:MM:SS'. Wenn nicht gesetzt, wird --start-offset benutzt.")
-    p.add_argument("--start-offset", type=float, default=60.0,
-                   help="Offset in Sekunden ab jetzt, falls --start nicht gesetzt ist (Default 60)")
-    p.add_argument("--use-rate-adaption", action="store_true",
-                   help="Setzt useRateAdaption auf true (Default false)")
-    p.add_argument("--timeout", type=float, default=5.0, help="HTTP Timeout pro Request (s)")
-    p.add_argument("--retries", type=int, default=2, help="Retries pro Host bei Fehlern")
-    p.add_argument("--concurrency", type=int, default=16, help="Parallelität")
-    p.add_argument("--dry-run", action="store_true", help="Nur anzeigen, nichts senden")
+                   help="Scenario pattern: always | ramp | bursts")
+    p.add_argument("--hosts", required=True, help="Path to hosts.txt (one URL per line)")
+    p.add_argument("--time-limit", type=float, default=56.0, help="Total scenario duration in seconds")
+    p.add_argument("--start", default=None, help="Start time ISO 'YYYY-MM-DDTHH:MM:SS'")
+    p.add_argument("--start-offset", type=float, default=60.0, help="Offset in seconds from now if --start not set")
+    p.add_argument("--use-rate-adaption", action="store_true", help="Enable adaptive rate control")
+    p.add_argument("--timeout", type=float, default=5.0, help="HTTP request timeout per host")
+    p.add_argument("--retries", type=int, default=2, help="Retries per host in case of failure")
+    p.add_argument("--concurrency", type=int, default=16, help="Max number of parallel requests")
+    p.add_argument("--dry-run", action="store_true", help="Only print schedule, don’t send")
     return p.parse_args()
 
 def read_hosts(path: Path):
-    lines = [ln.strip() for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    lines = [ln.strip() for ln in path.read_text(encoding="utf-8").splitlines()
+             if ln.strip() and not ln.strip().startswith("#")]
     return [ln.strip('"').strip("'") for ln in lines]
 
-def base_start_epoch(start_iso: str | None, start_offset: float) -> float:
+def base_start_epoch(start_iso, start_offset):
     if start_iso:
         try:
             dt_local = dt.datetime.strptime(start_iso, "%Y-%m-%dT%H:%M:%S")
         except ValueError:
-            sys.exit("ERROR: --start muss Format YYYY-MM-DDTHH:MM:SS haben (z.B. 2025-08-13T12:21:00)")
+            sys.exit(f"{RED}❌ ERROR:{RESET} --start must use format YYYY-MM-DDTHH:MM:SS")
         return dt_local.timestamp()
     return time.time() + start_offset
 
 def iso_no_tz(epoch: float) -> str:
-    # ISO ohne Zeitzone (wie in deinem Beispiel)
     return dt.datetime.fromtimestamp(epoch).strftime("%Y-%m-%dT%H:%M:%S")
 
 def offsets_for(pattern: str, i: int, time_limit: float, total_hosts: int):
-    """
-    Gibt (start_off, stop_off) in Sekunden relativ zur Basis zurück.
-    Entspricht exakt der Ini-Konfiguration.
-    """
     if pattern == "always":
         return 0.0, time_limit
-
     if pattern in ("ramp", "bursts") and total_hosts != 14:
-        sys.exit(f"ERROR: Muster '{pattern}' erwartet genau 14 Hosts (wie 0..13 in der Ini). Gefunden: {total_hosts}.")
-
+        sys.exit(f"{RED}❌ ERROR:{RESET} Pattern '{pattern}' requires exactly 14 hosts. Found: {total_hosts}.")
     if pattern == "ramp":
-        start_off = (i / DENOM) * time_limit
-        stop_off  = ((43.0 + i) / DENOM) * time_limit
-        return start_off, stop_off
-
-    # pattern == "bursts"
+        return (i / DENOM) * time_limit, ((43.0 + i) / DENOM) * time_limit
     if i <= 1:
-        start_off = (0.0  / DENOM) * time_limit
-        stop_off  = (56.0 / DENOM) * time_limit
+        return (0.0/ DENOM)*time_limit, (56.0/ DENOM)*time_limit
     elif i <= 7:
-        start_off = (7.0  / DENOM) * time_limit
-        stop_off  = (49.0 / DENOM) * time_limit
+        return (7.0/ DENOM)*time_limit, (49.0/ DENOM)*time_limit
     else:
-        start_off = (14.0 / DENOM) * time_limit
-        stop_off  = (42.0 / DENOM) * time_limit
-    return start_off, stop_off
+        return (14.0/ DENOM)*time_limit, (42.0/ DENOM)*time_limit
 
 def send(url: str, payload: dict, timeout: float, retries: int):
-    last_exc = None
-    for attempt in range(retries + 1):
+    last_exc=None
+    for attempt in range(retries+1):
         try:
-            r = requests.post(url, json=payload, timeout=timeout)
-            return url, r.status_code, r.text.strip()
+            r=requests.post(url,json=payload,timeout=timeout)
+            return url,r.status_code,r.text.strip()
         except Exception as e:
-            last_exc = e
-            time.sleep(min(1.0 * (attempt + 1), 3.0))
-    return url, -1, f"ERROR: {last_exc}"
+            last_exc=e
+            time.sleep(min(1.0*(attempt+1),3.0))
+    return url,-1,f"ERROR: {last_exc}"
 
 def main():
-    args = parse_args()
-    hosts = read_hosts(Path(args.hosts))
+    args=parse_args()
+    hosts=read_hosts(Path(args.hosts))
     if not hosts:
-        sys.exit("ERROR: hosts.txt ist leer.")
+        sys.exit(f"{RED}❌ ERROR:{RESET} hosts.txt is empty.")
 
-    # Hardcoded path for this script
-    SCHEDULE_PATH = "/api/v1/nodes/schedule"
-    schedule_hosts = [f"{host.rstrip('/')}{SCHEDULE_PATH}" for host in hosts]
+    base_epoch=base_start_epoch(args.start,args.start_offset)
+    SCHEDULE_PATH="/api/v1/nodes/schedule"
+    schedule_hosts=[f"{h.rstrip('/')}{SCHEDULE_PATH}" for h in hosts]
 
-    base_epoch = base_start_epoch(args.start, args.start_offset)
+    print(f"{BOLD}🎬 Scheduling experiments on {len(schedule_hosts)} hosts{RESET}")
+    print(f"   Pattern: {CYAN}{args.pattern}{RESET}")
+    print(f"   timeLimit: {args.time_limit:.1f}s")
+    print(f"   base start: {iso_no_tz(base_epoch)} (epoch={int(base_epoch)})")
+    print(f"   useRateAdaption: {args.use_rate_adaption}")
+    print(f"   dry-run: {args.dry_run}\n")
 
-    print(f"[INFO] Hosts: {len(schedule_hosts)}")
-    print(f"[INFO] Pattern: {args.pattern}")
-    print(f"[INFO] timeLimit: {args.time_limit:.3f}s")
-    print(f"[INFO] base start: {iso_no_tz(base_epoch)} (epoch={int(base_epoch)})")
-    print(f"[INFO] useRateAdaption: {args.use_rate_adaption}")
-    print(f"[INFO] dry-run: {args.dry_run}")
-    print()
-
-    jobs = []
-    for i, url in enumerate(schedule_hosts):
-        start_off, stop_off = offsets_for(args.pattern, i, args.time_limit, len(schedule_hosts))
-        payload = {
-            "startTime": iso_no_tz(base_epoch + start_off),
-            "endTime":   iso_no_tz(base_epoch + stop_off),
-            "useRateAdaption": bool(args.use_rate_adaption),
-        }
-        jobs.append((i, url, payload))
+    jobs=[]
+    for i,url in enumerate(schedule_hosts):
+        start_off,stop_off=offsets_for(args.pattern,i,args.time_limit,len(schedule_hosts))
+        payload={"startTime": iso_no_tz(base_epoch+start_off),
+                 "endTime": iso_no_tz(base_epoch+stop_off),
+                 "useRateAdaption": bool(args.use_rate_adaption)}
+        jobs.append((i,url,payload))
 
     if args.dry_run:
-        for i, url, payload in jobs:
-            print(f"[DRY] UE {i:02d} -> {url}")
-            print("      " + json.dumps(payload, ensure_ascii=False))
+        for i,url,payload in jobs:
+            print(f"{YELLOW}🔎 DRY-RUN UE {i:02d}{RESET} -> {url}")
+            print("     "+json.dumps(payload,ensure_ascii=False))
         return
 
-    results = []
+    results=[]
     with cf.ThreadPoolExecutor(max_workers=args.concurrency) as ex:
-        futs = [ex.submit(send, url, payload, args.timeout, args.retries) for _, url, payload in jobs]
+        futs=[ex.submit(send,url,payload,args.timeout,args.retries) for _,url,payload in jobs]
         for fut in cf.as_completed(futs):
             results.append(fut.result())
 
-    ok = 0
-    print("\n[RESULTS]")
-    for url, status, text in results:
-        if status in (200, 201, 202, 204):
-            ok += 1
-            print(f"[OK]   {url} -> {status}")
+    ok=0
+    print(f"\n{BOLD}📊 Results:{RESET}")
+    for url,status,text in results:
+        if status in (200,201,202,204):
+            ok+=1
+            print(f"{GREEN}✅ {url}{RESET} -> {status}")
         else:
-            print(f"[FAIL] {url} -> {status} {text[:200]}")
-    print(f"\n[SUMMARY] {ok}/{len(results)} erfolgreich.")
+            print(f"{RED}❌ {url}{RESET} -> {status} {text[:120]}")
 
-if __name__ == "__main__":
+    fail=len(results)-ok
+    print("\n"+"-"*55)
+    if fail==0:
+        print(f"{GREEN}🎉 All {ok} hosts successfully scheduled.{RESET}")
+    else:
+        print(f"{YELLOW}⚠️  Summary:{RESET} {GREEN}{ok} ok{RESET}, {RED}{fail} failed{RESET}")
+
+if __name__=="__main__":
     main()
