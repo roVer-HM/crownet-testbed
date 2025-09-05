@@ -1,0 +1,55 @@
+---
+- name: Pull Docker image on all nodes
+  hosts: pis
+  gather_facts: false
+  become: true
+
+  vars:
+    docker_image: "192.168.0.2:5000/crownet-testbed:latest"
+    cmd_timeout: 300
+    ssh_connect_timeout: 8
+    ansible_ssh_common_args: "-o ConnectTimeout={{ ssh_connect_timeout }}"
+
+  tasks:
+    - name: Ensure Docker service is running
+      ansible.builtin.service:
+        name: docker
+        state: started
+
+    - name: Start docker pull
+      ansible.builtin.command: "docker pull {{ docker_image }}"
+      async: "{{ cmd_timeout }}"
+      poll: 0
+      register: pull_job
+
+    - name: Wait for completion
+      ansible.builtin.async_status:
+        jid: "{{ pull_job.ansible_job_id }}"
+      register: pull_result
+      until: pull_result.finished
+      retries: "{{ cmd_timeout }}"
+      delay: 1
+
+    - name: Per-host result
+      ansible.builtin.debug:
+        msg: >-
+          {{ '✅ ' ~ inventory_hostname ~ ' — pull ok'
+             if (pull_result.rc | default(1)) == 0
+             else '❌ ' ~ inventory_hostname ~ ' — failed (rc=' ~ (pull_result.rc | default(-1)) | string ~ ')' }}
+
+    - name: Summary
+      run_once: true
+      vars:
+        results: >-
+          {{ dict(ansible_play_hosts
+                 | zip(ansible_play_hosts
+                 | map('extract', hostvars, 'pull_result')
+                 | map(attribute='rc'))) }}
+        ok_list: "{{ results | dict2items | selectattr('value','equalto',0) | map(attribute='key') | list }}"
+        fail_list: "{{ results | dict2items | rejectattr('value','equalto',0) | map(attribute='key') | list }}"
+      ansible.builtin.debug:
+        msg: >-
+          {{ '🎉 All ' ~ (ok_list|length)|string ~ ' nodes updated successfully: ' ~ (ok_list|join(', '))
+             if (fail_list|length)==0 else
+             '⚠️  Summary: ' ~ (ok_list|length)|string ~ ' ok, ' ~ (fail_list|length)|string
+             ~ ' failed — retry: ' ~ (fail_list|join(', ')) }}

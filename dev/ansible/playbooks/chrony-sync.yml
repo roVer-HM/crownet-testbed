@@ -1,0 +1,11 @@
+---
+- name: Chrony neu starten & makestep
+  hosts: pis
+  become: true
+  tasks:
+    - name: Chrony neu starten
+      ansible.builtin.service:
+        name: chrony
+        state: restarted
+    - name: Zeit scharf stellen (makestep)
+      ansible.builtin.command: chronyc -a makestep

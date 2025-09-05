@@ -1,0 +1,23 @@
+---
+- name: Run Docker container detached on all nodes
+  hosts: pis
+  gather_facts: false
+  become: true
+
+  vars:
+    docker_image: "192.168.0.2:5000/crownet-testbed:latest"
+    container_name: "crownet-node-{{ experimental_node_id }}"
+
+  tasks:
+    - name: Check if container is running
+      ansible.builtin.shell: docker ps --filter "name=^/{{ container_name }}$" -q
+      register: running
+      changed_when: false
+
+    - name: Start container detached if not running
+      ansible.builtin.command: >
+        docker run -d --rm --name {{ container_name }} --network host
+        -e SERVER_ADDRESS=0.0.0.0
+        -e EXPERIMENTAL_NODE_ID={{ experimental_node_id }}
+        {{ docker_image }}
+      when: running.stdout == ""

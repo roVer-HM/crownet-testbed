@@ -85,7 +85,7 @@ public class RateAdaptionServiceImpl implements RateAdaptionService {
   // Calculate randomized and corrected interval T'(t) in milliseconds.
   private long calculateTPrime() {
     long base = calculateT();
-    double randomized = ThreadLocalRandom.current().nextDouble(0.5 * base, 1.5 * base);
+    double randomized = ThreadLocalRandom.current().nextDouble(0.75 * base, 1.25 * base);
     double corrected = randomized * CORRECTION_FACTOR;
     return Math.max(MINIMUM_SENDING_INTERVAL_MILLIS, Math.round(corrected));
   }
