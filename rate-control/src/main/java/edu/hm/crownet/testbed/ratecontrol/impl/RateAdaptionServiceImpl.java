@@ -4,9 +4,6 @@ import edu.hm.crownet.testbed.ratecontrol.RateAdaptionService;
 
 import java.util.concurrent.ThreadLocalRandom;
 
-import static java.lang.Math.exp;
-import static java.lang.Math.max;
-
 /**
  * Service for adaptive transmission rate control based on node density and message size,
  * implementing the ARC-DSA algorithm with timer reconsideration.
@@ -15,28 +12,35 @@ public class RateAdaptionServiceImpl implements RateAdaptionService {
 
   /**
    * Minimum sending interval in milliseconds.
-   * This is used to ensure that the transmission interval does not fall below a certain threshold.
+   * Ensures the transmission interval does not fall below a safety threshold.
    */
   private static final long MINIMUM_SENDING_INTERVAL_MILLIS = 100;
 
   /**
    * Correction factor for the randomized interval.
-   * This is used to adjust the randomized transmission time to ensure it remains within a reasonable range.
    */
-  private static final double CORRECTION_FACTOR = exp(-2.0 / 3.0);
+  private static final double CORRECTION_FACTOR = 1.0 / (Math.E - 1.5);
 
   /**
    * Maximum application bandwidth in bytes per second.
    */
   private final double bandwidthBytesPerSec;
 
+  /**
+   * The estimated average packet size.
+   */
+  private double estimatedAvgPacketSize;
+
+  /**
+   * The estimated amount of nodes in the resource sharing domain. Initialized with one to include this node itself.
+   */
   private int currentNodeEstimate = 1;
-  private double estimatedAvgPacketSize = -1;
 
   private long lastPlannedTPrime = -1;
 
-  public RateAdaptionServiceImpl(double bandwidthBytesPerSec) {
+  public RateAdaptionServiceImpl(double bandwidthBytesPerSec, double initialEstimatedAvgPacketSize) {
     this.bandwidthBytesPerSec = bandwidthBytesPerSec;
+    this.estimatedAvgPacketSize = initialEstimatedAvgPacketSize;
   }
 
   @Override
@@ -60,36 +64,35 @@ public class RateAdaptionServiceImpl implements RateAdaptionService {
   @Override
   public long obtainDeltaT() {
     if (lastPlannedTPrime < 0) {
-      return 0; // fallback: send immediately for example on startup
+      // No prior plan: schedule immediately based on current estimates
+      lastPlannedTPrime = calculateTPrime();
+      return 0;
     }
 
     long newTPrime = calculateTPrime();
     long deltaT = newTPrime - lastPlannedTPrime;
 
     if (deltaT <= 0) {
+      // Send now
+      lastPlannedTPrime = newTPrime;
       return 0;
     } else {
-      this.lastPlannedTPrime = newTPrime;
-      return max(MINIMUM_SENDING_INTERVAL_MILLIS, deltaT);
+      lastPlannedTPrime = newTPrime;
+      return deltaT;
     }
   }
 
-  /* Calculation without randomisation. For test purposes.
-  private long calculateTPrime() {
-    long base = calculateT();
-    return (long) max(MINIMUM_SENDING_INTERVAL_MILLIS, base);
-  }
-  */
-
+  // Calculate randomized and corrected interval T'(t) in milliseconds.
   private long calculateTPrime() {
     long base = calculateT();
     double randomized = ThreadLocalRandom.current().nextDouble(0.5 * base, 1.5 * base);
-    return (long) max(MINIMUM_SENDING_INTERVAL_MILLIS, randomized / CORRECTION_FACTOR);
+    double corrected = randomized * CORRECTION_FACTOR;
+    return Math.max(MINIMUM_SENDING_INTERVAL_MILLIS, Math.round(corrected));
   }
 
-  // Returns base interval without randomization.
+  // Calculate deterministic interval T(t) in milliseconds.
   private long calculateT() {
-    if (estimatedAvgPacketSize <= 0) return MINIMUM_SENDING_INTERVAL_MILLIS;
-    return (long) (((currentNodeEstimate * estimatedAvgPacketSize) / bandwidthBytesPerSec) * 1000.0);
+    double tSeconds = (currentNodeEstimate * estimatedAvgPacketSize) / bandwidthBytesPerSec;
+    return Math.round(tSeconds * 1000.0);
   }
 }

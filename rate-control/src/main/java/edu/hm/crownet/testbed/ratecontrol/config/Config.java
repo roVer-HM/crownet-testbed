@@ -27,7 +27,7 @@ public class Config {
 
   @Bean("beaconRateAdaptionService")
   public RateAdaptionService beaconRateAdaptionService(@Value("${crownet.testbed.adhoc.beacon.bandwidth}") int maxBytesPerSec) {
-    return new RateAdaptionServiceImpl(maxBytesPerSec);
+    return new RateAdaptionServiceImpl(maxBytesPerSec, 38);
   }
 
   // Message size and rate adaption service for the message module.
@@ -38,6 +38,6 @@ public class Config {
 
   @Bean("messageRateAdaptionService")
   public RateAdaptionService messageRateAdaptionService(@Value("${crownet.testbed.adhoc.message.bandwidth}") int maxBytesPerSec) {
-    return new RateAdaptionServiceImpl(maxBytesPerSec);
+    return new RateAdaptionServiceImpl(maxBytesPerSec, 1400);
   }
 }

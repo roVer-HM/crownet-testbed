@@ -80,7 +80,7 @@ public class BeaconReceiverImpl implements BeaconReceiver {
     short sequenceNumber = buffer.getShort();
     int sourceId = buffer.getInt();
     int timestampMs = buffer.getInt();
-    byte[] payload = new byte[38];
+    byte[] payload = new byte[28];
     buffer.get(payload);
 
     return new Beacon(sequenceNumber, sourceId, timestampMs, payload);
