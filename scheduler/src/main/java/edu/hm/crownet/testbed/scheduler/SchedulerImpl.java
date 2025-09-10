@@ -12,21 +12,20 @@ import static java.util.concurrent.Executors.newScheduledThreadPool;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
- * Default implementation of the {@link Scheduler} interface using a shared {@link ScheduledExecutorService}
- * to manage recurring tasks.
- *
- * <p>Each task is tracked using a unique task ID and can be started or stopped individually.
+ * Implementation of the Scheduler interface using a ScheduledExecutorService.
+ * This class allows scheduling one-shot and periodic tasks, as well as stopping existing tasks by their unique identifiers.
  */
 @Service
 public class SchedulerImpl implements Scheduler {
 
   /**
-   * Scheduled executor with a thread pool size equal to the number of available processors.
+   * A ScheduledExecutorService that manages the scheduling and execution of tasks.
+   * The thread pool size is set to the number of available processors to optimize performance.
    */
   private final ScheduledExecutorService scheduler = newScheduledThreadPool(getRuntime().availableProcessors());
 
   /**
-   * A thread-safe map that holds the currently scheduled tasks by their unique identifiers.
+   * A thread-safe map that holds the scheduled tasks, allowing for quick access and management of tasks by their unique identifiers.
    */
   private final Map<String, ScheduledFuture<?>> tasks = new ConcurrentHashMap<>();
 
