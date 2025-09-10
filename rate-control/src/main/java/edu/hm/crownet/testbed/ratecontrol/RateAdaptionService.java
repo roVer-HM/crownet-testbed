@@ -1,36 +1,38 @@
 package edu.hm.crownet.testbed.ratecontrol;
 
 /**
- * Service interface for adaptive rate control.
+ * Service interface for adapting the transmission rate based on network conditions.
+ *
+ * <p>This service adjusts the transmission interval based on the estimated number of active nodes
+ * and the average message size to optimize network performance.
  */
 public interface RateAdaptionService {
 
   /**
-   * Updates the estimated number of active nodes.
+   * Updates the estimated number of active nodes in the network.
    *
-   * @param nodeCount number of observed neighbor nodes
+   * @param nodeCount the new estimated number of nodes
    */
   void updateEstimatedNodeCount(int nodeCount);
 
   /**
-   * Updates the estimated average message size in bytes.
+   * Updates the average message size used for rate adaptation calculations.
    *
-   * @param newSize new average message size
+   * @param newSize the new average message size in bytes
    */
   void updateAverageMessageSize(double newSize);
 
   /**
-   * Returns the current transmission interval in milliseconds.
+   * Calculates the next transmission time based on the current estimated node count and message size.
    *
-   * @return interval in ms
+   * @return the next transmission time in milliseconds since epoch
    */
   long obtainNextTransmissionTime();
 
   /**
-   * Calculates the time delta for the next transmission based on the current
-   * estimated node count and message size.
+   * Calculates the delta time until the next transmission.
    *
-   * @return time delta in milliseconds
+   * @return the delta time in milliseconds
    */
   long obtainDeltaT();
 }

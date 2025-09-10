@@ -31,7 +31,7 @@ dependencies {
     implementation project(':scheduler')
     implementation project(':rate-control')
     implementation project(':analytics')
-    implementation project(':payload')
+    implementation project(':message')
     
     implementation 'org.springframework.boot:spring-boot-starter'
     implementation 'org.springframework.boot:spring-boot-starter-web'

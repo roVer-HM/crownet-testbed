@@ -5,34 +5,47 @@ import edu.hm.crownet.testbed.ratecontrol.RateAdaptionService;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * Service for adaptive transmission rate control based on node density and message size,
- * implementing the ARC-DSA algorithm with timer reconsideration.
+ * Implementation of the RateAdaptionService that adapts the sending rate based on estimated
+ * bandwidth, average message size, and number of neighboring nodes.
+ *
+ * <p>This implementation calculates a base interval T for sending messages and then randomizes
+ * it within a range to avoid synchronization issues. A correction factor is applied to ensure
+ * that the average sending rate meets the desired bandwidth constraints.
+ *
+ * <p>The service maintains estimates of the average message size and the number of neighboring
+ * nodes, which can be updated dynamically. The next transmission time or delta time until
+ * the next transmission can be obtained through the provided methods.
  */
 public class RateAdaptionServiceImpl implements RateAdaptionService {
 
   /**
-   * Minimum sending interval in milliseconds.
-   * Ensures the transmission interval does not fall below a safety threshold.
+   * Conversion factor from seconds to milliseconds.
+   */
+  private static final double MILLIS_PER_SECOND = 1000.0;
+
+  /**
+   * Minimum interval between sending messages in milliseconds to avoid excessive sending rates.
    */
   private static final long MINIMUM_SENDING_INTERVAL_MILLIS = 100;
 
   /**
-   * Correction factor for the randomized interval.
+   * Correction factor to adjust the randomized interval to achieve the desired average sending rate.
+   * This factor is derived from the expected value of the uniform distribution used for randomization.
    */
   private static final double CORRECTION_FACTOR = 1.0 / (Math.E - 1.5);
 
   /**
-   * Maximum application bandwidth in bytes per second.
+   * The available bandwidth in bytes per second.
    */
   private final double bandwidthBytesPerSec;
 
   /**
-   * The estimated average packet size.
+   * The estimated average size of messages in bytes.
    */
   private double estimatedAvgPacketSize;
 
   /**
-   * The estimated amount of nodes in the resource sharing domain. Initialized with one to include this node itself.
+   * The current estimate of the number of neighboring nodes.
    */
   private int currentNodeEstimate = 1;
 
@@ -82,7 +95,9 @@ public class RateAdaptionServiceImpl implements RateAdaptionService {
     }
   }
 
-  // Calculate randomized and corrected interval T'(t) in milliseconds.
+  /*
+   * Calculate randomized interval T' in milliseconds with correction factor.
+   */
   private long calculateTPrime() {
     long base = calculateT();
     double randomized = ThreadLocalRandom.current().nextDouble(0.75 * base, 1.25 * base);
@@ -90,9 +105,11 @@ public class RateAdaptionServiceImpl implements RateAdaptionService {
     return Math.max(MINIMUM_SENDING_INTERVAL_MILLIS, Math.round(corrected));
   }
 
-  // Calculate deterministic interval T(t) in milliseconds.
+  /*
+   * Calculate base interval T in milliseconds based on current estimates.
+   */
   private long calculateT() {
     double tSeconds = (currentNodeEstimate * estimatedAvgPacketSize) / bandwidthBytesPerSec;
-    return Math.round(tSeconds * 1000.0);
+    return Math.round(tSeconds * MILLIS_PER_SECOND);
   }
 }
