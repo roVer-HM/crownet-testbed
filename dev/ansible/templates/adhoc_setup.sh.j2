@@ -1,0 +1,54 @@
+#!/bin/bash
+set -euo pipefail
+
+# Configuration
+IFACE="{{ iface }}"
+ESSID="{{ essid }}"
+FREQ="{{ freq_mhz }}"      # MHz (e.g. 2412 = Channel 1 @ 2.412 GHz)
+IP_ADDR="{{ ip_addr }}"
+NETMASK="{{ netmask }}"
+
+echo "[*] Starting configuration for ${IFACE} in ad-hoc mode..."
+
+# Stop services that might block the interface
+echo "[*] Stopping possible blocking services..."
+if command -v systemctl >/dev/null 2>&1; then
+  if sudo systemctl is-active --quiet NetworkManager; then
+      echo "[*] Stopping NetworkManager..."
+      sudo systemctl stop NetworkManager
+  fi
+  if sudo systemctl is-active --quiet wpa_supplicant; then
+      echo "[*] Stopping wpa_supplicant (system service)..."
+      sudo systemctl stop wpa_supplicant
+  fi
+fi
+
+# Kill any running wpa_supplicant processes
+if pgrep wpa_supplicant >/dev/null 2>&1; then
+    echo "[*] Killing running wpa_supplicant processes..."
+    sudo killall wpa_supplicant || true
+fi
+
+# Prepare interface
+echo "[*] Bringing interface ${IFACE} down..."
+sudo ip link set "${IFACE}" down
+
+echo "[*] Setting mode to ad-hoc (IBSS)..."
+sudo iw "${IFACE}" set type ibss
+
+echo "[*] Bringing interface ${IFACE} up..."
+sudo ip link set "${IFACE}" up
+
+# Join ad-hoc network
+echo "[*] Joining ad-hoc network '${ESSID}' on frequency ${FREQ} MHz..."
+sudo iw "${IFACE}" ibss join "${ESSID}" "${FREQ}"
+
+echo "[*] Waiting for IBSS connection..."
+sleep 10
+
+# Assign static IP
+echo "[*] Assigning static IP ${IP_ADDR} to ${IFACE}..."
+sudo ip addr flush dev "${IFACE}"
+sudo ip addr add "${IP_ADDR}/24" dev "${IFACE}"
+
+echo "[+] Ad-hoc network '${ESSID}' successfully started on ${IFACE} with IP ${IP_ADDR}"

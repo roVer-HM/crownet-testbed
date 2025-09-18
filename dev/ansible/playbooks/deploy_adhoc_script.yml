@@ -1,0 +1,44 @@
+---
+- name: Deploy adhoc setup script to Pis (create only if missing)
+  hosts: pis
+  become: yes
+  gather_facts: false
+
+  vars:
+    iface: "wlan0"
+    essid: "adhoc-netzwerk"
+    freq_mhz: 2412 # Channel 1 (2.412 GHz)
+    netmask: "255.255.255.0"
+
+    # IP calculation: 192.168.1.(base_last_octet + experimental_node_id - 1)
+    ip_prefix: "192.168.1."
+    base_last_octet: 3      # results in .3 for node 1 (as in your example)
+
+    target_path: "/usr/local/bin/adhoc_setup.sh"
+
+  tasks:
+    - name: Compute per-host IP address from experimental_node_id
+      set_fact:
+        ip_addr: "{{ ip_prefix }}{{ base_last_octet + (experimental_node_id | int) - 1 }}"
+
+    - name: Ensure /usr/local/bin exists
+      file:
+        path: "/usr/local/bin"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Place adhoc setup script (only if not present)
+      template:
+        src: "../templates/adhoc_setup.sh.j2"
+        dest: "{{ target_path }}"
+        owner: root
+        group: root
+        mode: '0755'
+        force: no
+      register: script_copy
+
+    - name: Show where the script was placed
+      debug:
+        msg: "On {{ inventory_hostname }} placed {{ target_path }} (ip={{ ip_addr }}) - changed={{ script_copy.changed }}"

@@ -25,7 +25,7 @@ tasks.named("bootRun") {
 }
 
 dependencies {
-    implementation project(':api')
+    implementation project(':resource')
     implementation project(':beacon')
     implementation project(':client')
     implementation project(':scheduler')

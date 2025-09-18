@@ -1,0 +1,22 @@
+---
+- name: Run adhoc setup script on all Pis
+  hosts: pis
+  become: yes
+  gather_facts: false
+
+  vars:
+    script_path: "/usr/local/bin/adhoc_setup.sh"
+
+  tasks:
+    - name: Ensure script is executable
+      file:
+        path: "{{ script_path }}"
+        mode: '0755'
+
+    - name: Execute adhoc setup script
+      shell: "{{ script_path }}"
+      register: adhoc_result
+
+    - name: Show script output
+      debug:
+        var: adhoc_result.stdout_lines

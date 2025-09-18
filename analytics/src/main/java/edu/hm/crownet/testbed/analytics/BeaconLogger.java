@@ -12,7 +12,7 @@ import java.util.List;
 
 public class BeaconLogger {
 
-  private FileWriter writer;          // <- nicht final, damit wir neu öffnen können
+  private FileWriter writer;
   private final String filePath;
 
   public BeaconLogger(String filePath) throws IOException {
