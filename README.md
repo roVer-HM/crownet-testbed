@@ -158,11 +158,12 @@ The `dev/scripts/` folder contains archived copies of the orchestration tools th
 
 This testbed was developed for my bachelor thesis on **Experimental Analysis of Adaptive Transmission Rate Control in a Wireless Sensor Network**. It enables:
 
-- Evaluation of rate adaptation algorithms under different network conditions
-- Comparison of fixed vs. adaptive bandwidth allocation
+- Evaluation of the rate adaptation algorithms, which has been developed at the Munich University of Applied Sciences (HM).
 - Analysis of network performance under various load patterns
-- Real-world validation of theoretical approaches
 
 ## 📄 License
 
 This project is part of academic research. Please cite appropriately if used in your own work.
+
+## Resources
+[1] S. Schuhbäck, L. Wischhof and J. Ott, "Adaptive Transmission Rate Control for Decentralized Sensing Applications," in IEEE Access, vol. 12, pp. 172943-172968, 2024, doi: 10.1109/ACCESS.2024.3495504.
