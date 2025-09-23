@@ -39,8 +39,6 @@ crownet-testbed/
 
 - Java 17+
 - Docker
-- Python 3.9+ (for orchestration scripts)
-- Ansible (for multi-node deployment)
 
 ### Building the Application
 
@@ -122,17 +120,38 @@ ADHOC_RECEIVE_PORT=9001
 - **`analytics/`**: Collects and processes experimental data
 - **`resource/`**: Provides REST API endpoints for external control
 
+### API Endpoints
+
+- `POST /api/v1/nodes/schedule` - Schedule experiment runs
+- `GET /api/v1/analytics/beacons` - Retrieve beacon data
+- `GET /api/v1/analytics/messages` - Retrieve message data
+- `DELETE /api/v1/analytics/*` - Clear collected data
+
+## 📈 Data Analysis
+
+Experimental data is collected and analyzed using Jupyter notebooks in `dev/laboratory/`:
+
+- **Raw data**: JSON logs per node (beacon and message data)
+- **Analysis**: Throughput calculation, rolling averages, visualization
+- **Results**: Plots and statistics for thesis evaluation
+
+See `dev/laboratory/README.md` for detailed analysis workflow.
+
 ## 🛠️ Orchestration Scripts (Archived)
 
 The `dev/scripts/` folder contains archived copies of the orchestration tools that run on the master node:
 
-- **`orchestrate.py`**: Schedule and run experiments across all nodes
-- **`deploy.py`**: Deploy new Docker images to all nodes
-- **`collect-logs.py`**: Collect experimental data from all nodes
-- **`clear-logs.py`**: Reset logs on all nodes
-- **`sync_time.py`**: Synchronize clocks across all nodes
+- **`schedule.py`**: Schedule and run experiments across all nodes
+- **`collect.py`**: Collect experimental data from all nodes
+- **`clear.py`**: Reset logs on all nodes
 
 **Note**: These are reference copies. The actual scripts run on the master node of the physical testbed.
+
+## 📚 Documentation
+
+- **`dev/ansible/README.md`**: Archived Ansible automation documentation
+- **`dev/scripts/README.md`**: Archived orchestration scripts documentation  
+- **`dev/laboratory/README.md`**: Data analysis workflow
 
 ## 🎓 Thesis Context
 
