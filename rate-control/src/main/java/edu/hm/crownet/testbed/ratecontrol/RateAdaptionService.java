@@ -1,38 +1,38 @@
 package edu.hm.crownet.testbed.ratecontrol;
 
 /**
- * Service interface for adapting the transmission rate based on network conditions.
+ * Adapts the transmission interval based on current network conditions.
  *
- * <p>This service adjusts the transmission interval based on the estimated number of active nodes
- * and the average message size to optimize network performance.
+ * <p>The service computes the next transmission time/interval using the
+ * estimated number of active nodes and the average message size.
  */
 public interface RateAdaptionService {
 
   /**
    * Updates the estimated number of active nodes in the network.
    *
-   * @param nodeCount the new estimated number of nodes
+   * @param nodeCount estimated active nodes (>= 0)
    */
   void updateEstimatedNodeCount(int nodeCount);
 
   /**
-   * Updates the average message size used for rate adaptation calculations.
+   * Updates the average application-layer message size used in calculations.
    *
-   * @param newSize the new average message size in bytes
+   * @param sizeInBytes average message size in bytes (> 0)
    */
-  void updateAverageMessageSize(double newSize);
+  void updateAverageMessageSize(double sizeInBytes);
 
   /**
-   * Calculates the next transmission time based on the current estimated node count and message size.
+   * Computes the absolute timestamp for the next transmission.
    *
-   * @return the next transmission time in milliseconds since epoch
+   * @return next transmission time as an Instant
    */
-  long obtainNextTransmissionTime();
+  long obtainNextTransmissionTime(); // TODO - v.auricchi@hm.edu: Rename method to "computeNextTransmissionTime"
 
   /**
-   * Calculates the delta time until the next transmission.
+   * Computes the interval until the next transmission from now.
    *
-   * @return the delta time in milliseconds
+   * @return time until next transmission as a Duration (non-negative)
    */
-  long obtainDeltaT();
+  long obtainDeltaT(); // TODO - v.auricchio@hm.edu: Rename to "computeNextInterval"
 }
