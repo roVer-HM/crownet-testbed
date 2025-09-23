@@ -1,76 +1,152 @@
-```sh
+# Crownet Testbed - ARC-DSA
+
+A testbed for evaluating **Adaptive Rate Control for Decentralized Sensing Applications (ARC-DSA)**. This project implements a Spring Boot-based testbed that runs on multiple Raspberry Pi nodes to conduct network load experiments and evaluate rate adaptation algorithms.
+
+## 🎯 Overview
+
+This testbed system is designed for my bachelor thesis research on adaptive rate control in decentralized sensing applications. It provides:
+
+- **Rate Adaptation**: ARC-DSA algorithm implementation for dynamic bandwidth control
+- **Experiment Orchestration**: Automated scheduling and execution of different network load scenarios
+- **Real-time Analytics**: Live monitoring and data collection from all nodes
+- **Docker Deployment**: Containerized deployment for easy scaling and management
+
+## 🏗️ Architecture
+
+The system consists of multiple Spring Boot modules:
+
+```
+crownet-testbed/
+├── application/         # Main Spring Boot application
+├── beacon/              # Beacon transmission module
+├── message/             # Application message handling
+├── rate-control/        # ARC-DSA rate adaptation algorithm
+├── scheduler/           # Experiment scheduling
+├── analytics/           # Data collection and analysis
+├── client/              # Client communication
+├── resource/            # REST API endpoints
+└── dev/                 # Development and analysis tools
+    ├── ansible/         # Archived Ansible scripts (master node)
+    ├── scripts/         # Archived orchestration scripts (master node)
+    └── laboratory/      # Data analysis notebooks
+```
+
+**Note**: The files in `dev/ansible/` and `dev/scripts/` are archived copies of the actual deployment and orchestration tools that run on the master node of the physical testbed.
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Java 17+
+- Docker
+- Python 3.9+ (for orchestration scripts)
+- Ansible (for multi-node deployment)
+
+### Building the Application
+
+```bash
+# Build the project
+./gradlew build
+
+# Build Docker image
 docker build -t crownet-testbed .
 ```
 
+### Running a Single Node
 
-
-```shell
-docker tag crownet-testbed:latest 192.168.0.2:5000/crownet-testbed:latest
-```
-
-```sh
-docker push 192.168.0.2:5000/crownet-testbed:latest
-```
-
-```shell
-sudo docker pull 192.168.0.2:5000/crownet-testbed:latest
-```
-```sh
-sudo docker run --rm --network host \
+```bash
+# Run with default configuration
+docker run --rm --network host \
   -e SERVER_ADDRESS=0.0.0.0 \
-  -e EXPERIMENTAL_NODE_ID=4 \
-  192.168.0.2:5000/crownet-testbed:latest
+  -e EXPERIMENTAL_NODE_ID=1 \
+  crownet-testbed:latest
 ```
 
-python3 push_schedule.py \
---pattern always \
---hosts ./hosts.txt \
---time-limit 120 \
---start 2025-08-14T12:00:00
+## 🧪 Experiment Scenarios
 
-python3 push_schedule.py \
---pattern ramp \
---hosts ./hosts.txt \
---time-limit 56 \
---start-offset 90 \
---use-rate-adaption \
---dry-run
+The testbed supports three main experiment patterns:
 
-python3 push_schedule.py \
---pattern bursts \
---hosts ./hosts.txt \
---time-limit 56 \
---start 2025-08-14T12:05:00
+### Always Pattern
+- All nodes active throughout the experiment
+- Constant network load baseline
+- Tests: `always` (without adaptation), `always_rate` (with ARC-DSA)
 
-# Always
-# 1) Always ohne Adaption (CHECK - 4)
-python3 orchestrate.py --pattern always --hosts hosts.txt \
---time-limit 560 --start-offset 60
+### Ramp Pattern  
+- Nodes activated/deactivated sequentially
+- Gradual load increase/decrease
+- Tests: `ramp` (without adaptation), `ramp_rate` (with ARC-DSA)
 
-# 2) Always mit Adaption + Randomisierung (CHECK - 4)
-python3 orchestrate.py --pattern always --hosts hosts.txt \
---time-limit 560 --start-offset 60 --use-rate-adaption
+### Burst Pattern
+- Groups of nodes active in short intervals
+- Bursty, intermittent load
+- Tests: `bursts` (without adaptation), `burst_rate` (with ARC-DSA)
 
-python3 orchestrate.py --pattern always --hosts hosts.txt \
---time-limit 56 --start-offset 60 --use-rate-adaption
+## 📊 Configuration
 
-# Ramp
-# 1) Ramp ohne Adaption (CHECK)
-python3 orchestrate.py --pattern ramp --hosts hosts.txt \
---time-limit 560 --start-offset 60
+Key configuration parameters (via environment variables):
 
-# 3) Ramp mit Adaption + Randomisierung
-python3 orchestrate.py --pattern ramp --hosts hosts.txt \
---time-limit 560 --start-offset 60 --use-rate-adaption
+```properties
+# Node identification
+EXPERIMENTAL_NODE_ID=1
 
-# Bursts
-# 1) Bursts ohne Adaption
-python3 orchestrate.py --pattern bursts --hosts hosts.txt \
---time-limit 560 --start-offset 60
+# Network settings
+SERVER_ADDRESS=0.0.0.0
+EXPERIMENTAL_BROADCAST_IP=192.168.1.255
 
-# 3) Bursts mit Adaption + Randomisierung
-python3 orchestrate.py --pattern bursts --hosts hosts.txt \
---time-limit 560 --start-offset 60 --use-rate-adaption
+# Beacon settings
+ADHOC_BEACON_BANDWIDTH=2000        # bytes/s (50 kbit/s)
+ADHOC_SEND_PORT=8888
+ADHOC_RECEIVE_PORT=8889
 
-python3 live_beacon_analysis.py --bmax 2000 --window 5
-python3 live_message_analysis.py --bmax 62500 --window 5
+# Message settings  
+ADHOC_MESSAGE_BANDWIDTH=62500      # bytes/s (500 kbit/s)
+ADHOC_SEND_PORT=9000
+ADHOC_RECEIVE_PORT=9001
+```
+
+## 🔧 Development
+
+### Project Structure
+
+- **Multi-module Gradle project** with Spring Boot
+- **Modular architecture** separating concerns (beacon, message, rate-control, etc.)
+- **REST API** for external control and monitoring
+- **Docker containerization** for deployment
+
+### Key Modules
+
+- **`beacon/`**: Handles beacon transmission and reception
+- **`message/`**: Manages application-level message exchange
+- **`rate-control/`**: Implements ARC-DSA rate adaptation algorithm
+- **`scheduler/`**: Controls experiment timing and node activation
+- **`analytics/`**: Collects and processes experimental data
+- **`resource/`**: Provides REST API endpoints for external control
+
+## 🛠️ Orchestration Scripts (Archived)
+
+The `dev/scripts/` folder contains archived copies of the orchestration tools that run on the master node:
+
+- **`orchestrate.py`**: Schedule and run experiments across all nodes
+- **`deploy.py`**: Deploy new Docker images to all nodes
+- **`collect-logs.py`**: Collect experimental data from all nodes
+- **`clear-logs.py`**: Reset logs on all nodes
+- **`sync_time.py`**: Synchronize clocks across all nodes
+
+**Note**: These are reference copies. The actual scripts run on the master node of the physical testbed.
+
+## 🎓 Thesis Context
+
+This testbed was developed for my bachelor thesis on **Experimental Analysis of Adaptive Transmission Rate Control in a Wireless Sensor Network**. It enables:
+
+- Evaluation of rate adaptation algorithms under different network conditions
+- Comparison of fixed vs. adaptive bandwidth allocation
+- Analysis of network performance under various load patterns
+- Real-world validation of theoretical approaches
+
+## 📄 License
+
+This project is part of academic research. Please cite appropriately if used in your own work.
+
+---
+
+**Note**: This testbed is designed for research purposes and requires proper network infrastructure and Raspberry Pi cluster setup for full functionality.
