@@ -1,7 +1,7 @@
 package edu.hm.crownet.testbed.ratecontrol;
 
 /**
- * Service interface for estimating the number of one-hop neighboring nodes.
+ * Service interface for estimating the number of neighboring nodes.
  *
  * <p>This service maintains an estimate of the number of neighboring nodes based on received
  * beacons within a specified time window.
