@@ -1,4 +1,5 @@
 # Crownet Testbed - ARC-DSA
+**Note**: This testbed is designed for research purposes and requires proper network infrastructure and Raspberry Pi cluster setup for full functionality.
 
 A testbed for evaluating Adaptive Rate Control for Decentralized Sensing Applications (ARC-DSA). This project implements a Spring Boot–based testbed running on multiple Raspberry Pi nodes to conduct network load experiments and evaluate the ARC-DSA algorithm.
 
@@ -165,7 +166,3 @@ This testbed was developed for my bachelor thesis on **Experimental Analysis of 
 ## 📄 License
 
 This project is part of academic research. Please cite appropriately if used in your own work.
-
----
-
-**Note**: This testbed is designed for research purposes and requires proper network infrastructure and Raspberry Pi cluster setup for full functionality.
