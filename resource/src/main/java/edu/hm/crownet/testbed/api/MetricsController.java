@@ -1,8 +1,8 @@
 package edu.hm.crownet.testbed.api;
 
-import edu.hm.crownet.testbed.analytics.BeaconLog;
+import edu.hm.crownet.testbed.analytics.data.BeaconLog;
 import edu.hm.crownet.testbed.analytics.BeaconLogger;
-import edu.hm.crownet.testbed.analytics.MessageLog;
+import edu.hm.crownet.testbed.analytics.data.MessageLog;
 import edu.hm.crownet.testbed.analytics.MessageLogger;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;

@@ -1,6 +1,7 @@
-package edu.hm.crownet.testbed.message;
+package edu.hm.crownet.testbed.message.impl;
 
 import edu.hm.crownet.testbed.client.Receiver;
+import edu.hm.crownet.testbed.message.MessageReceiver;
 import edu.hm.crownet.testbed.message.data.Message;
 import edu.hm.crownet.testbed.ratecontrol.MessageSizeService;
 import edu.hm.crownet.testbed.ratecontrol.NodeEstimatorService;

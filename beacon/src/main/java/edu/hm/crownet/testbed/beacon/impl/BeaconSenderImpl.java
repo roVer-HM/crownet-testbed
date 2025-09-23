@@ -1,9 +1,10 @@
-package edu.hm.crownet.testbed.message;
+package edu.hm.crownet.testbed.beacon.impl;
 
-import edu.hm.crownet.testbed.analytics.MessageLog;
-import edu.hm.crownet.testbed.analytics.MessageLogger;
+import edu.hm.crownet.testbed.analytics.data.BeaconLog;
+import edu.hm.crownet.testbed.analytics.BeaconLogger;
+import edu.hm.crownet.testbed.beacon.BeaconSender;
+import edu.hm.crownet.testbed.beacon.data.Beacon;
 import edu.hm.crownet.testbed.client.Sender;
-import edu.hm.crownet.testbed.message.data.Message;
 import edu.hm.crownet.testbed.ratecontrol.MessageSizeService;
 import edu.hm.crownet.testbed.ratecontrol.NodeEstimatorService;
 import edu.hm.crownet.testbed.ratecontrol.RateAdaptionService;
@@ -21,9 +22,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static java.net.InetAddress.getByName;
 
 @Service
-public class MessageSenderImpl implements MessageSender {
+public class BeaconSenderImpl implements BeaconSender {
 
-  private static final String TASK_ID = "measurement-sender";
+  private static final String TASK_ID = "beacon-sender";
 
   @Value("${crownet.testbed.adhoc.node-id}")
   private int sourceId;
@@ -31,10 +32,10 @@ public class MessageSenderImpl implements MessageSender {
   @Value("${crownet.testbed.adhoc.broadcast-address}")
   private String broadcastAddress;
 
-  @Value("${crownet.testbed.adhoc.message.send-port}")
+  @Value("${crownet.testbed.adhoc.beacon.send-port}")
   private int sendPort;
 
-  @Value("${crownet.testbed.adhoc.message.receive-port}")
+  @Value("${crownet.testbed.adhoc.beacon.receive-port}")
   private int receivePort;
 
   // Rate Adaption Algorithm
@@ -43,20 +44,20 @@ public class MessageSenderImpl implements MessageSender {
   private final MessageSizeService messageSizeService;
   private final NodeEstimatorService nodeEstimatorService;
 
-  // Message handling
+  // Beacon handling
   private final AtomicInteger sequenceNumber = new AtomicInteger(0);
 
   // Handles transmission of outgoing UDP packets
   private Sender sender;
 
   // Used for analysis
-  private MessageLogger messageLogger;
+  private BeaconLogger beaconLogger;
 
-  public MessageSenderImpl(
+  public BeaconSenderImpl(
           Scheduler scheduler,
           @Qualifier("oneHopNodeEstimator") NodeEstimatorService nodeEstimatorService,
-          @Qualifier("messageRateAdaptionService") RateAdaptionService rateAdaptionService,
-          @Qualifier("messageMessageSizeService") MessageSizeService messageSizeService
+          @Qualifier("beaconRateAdaptionService") RateAdaptionService rateAdaptionService,
+          @Qualifier("beaconMessageSizeService") MessageSizeService messageSizeService
   ) {
     this.scheduler = scheduler;
     this.rateAdaptionService = rateAdaptionService;
@@ -67,13 +68,12 @@ public class MessageSenderImpl implements MessageSender {
   @Override
   public void stop() {
     scheduler.stopExistingTaskIfPresent(TASK_ID);
-
     if (sender != null) {
       sender.close();
       sender = null;
     }
     try {
-      if (messageLogger != null) messageLogger.close();
+      if (beaconLogger != null) beaconLogger.close();
     } catch (Exception ignored) {
     }
   }
@@ -81,20 +81,21 @@ public class MessageSenderImpl implements MessageSender {
   @Override
   public void send(boolean useRateAdaption) {
     try {
-      Path logPath = Path.of("/var/log/crownet", "messages-node-" + sourceId + ".csv");
-      messageLogger = new MessageLogger(logPath.toString());
+      Path logPath = Path.of("/var/log/crownet", "beacons-node-" + sourceId + ".csv");
+      beaconLogger = new BeaconLogger(logPath.toString());
     } catch (Exception e) {
-      throw new RuntimeException("Failed to open message log", e);
+      throw new RuntimeException("Failed to open beacon log", e);
     }
 
     sender = new Sender();
     sender.initialize(sendPort);
 
+
     if (!useRateAdaption) {
       System.out.printf(
-              "MessageSender initialized (fixed interval) | Node=%d | Log=%s | SendPort=%d | Interval=%d ms%n",
+              "BeaconSender initialized (fixed interval) | Node=%d | Log=%s | SendPort=%d | Interval=%d ms%n",
               sourceId,
-              "/var/log/crownet/messages-node-" + sourceId + ".csv",
+              "/var/log/crownet/beacons-node-" + sourceId + ".csv",
               sendPort,
               100
       );
@@ -104,9 +105,9 @@ public class MessageSenderImpl implements MessageSender {
     } else {
       long initialDelay = rateAdaptionService.obtainNextTransmissionTime();
       System.out.printf(
-              "MessageSender initialized | Node=%d | Log=%s | SendPort=%d | First send in %d ms%n",
+              "BeaconSender initialized | Node=%d | Log=%s | SendPort=%d | First send in %d ms%n",
               sourceId,
-              "/var/log/crownet/messages-node-" + sourceId + ".csv",
+              "/var/log/crownet/beacons-node-" + sourceId + ".csv",
               sendPort,
               initialDelay
       );
@@ -120,28 +121,25 @@ public class MessageSenderImpl implements MessageSender {
 
   private void reconsiderTransmission() {
     long delta = rateAdaptionService.obtainDeltaT();
-    if (delta <= 0) {
-      transmit();
-    } else {
-      delayTransmission(delta);
-    }
+    if (delta <= 0) transmit();
+    else delayTransmission(delta);
   }
 
   private void transmit() {
     try {
-      Message message = createMessage();
-      byte[] data = serializeMessage(message);
+      Beacon beacon = createBeacon();
+      byte[] data = serializeBeacon(beacon); // 38 B
       DatagramPacket packet = new DatagramPacket(data, data.length, getByName(broadcastAddress), receivePort);
       sender.send(packet);
 
       //
-      // Logging of sent message
+      // Logging of sent beacon
       //
-      if (messageLogger != null) {
-        messageLogger.log(new MessageLog(
+      if (beaconLogger != null) {
+        beaconLogger.log(new BeaconLog(
                 new Timestamp(System.currentTimeMillis()),
                 sourceId,
-                message.sequenceNumber() & 0xFFFF, // cast short to unsigned: ensures sequence number is always 0–65535 instead of negative values
+                beacon.sequenceNumber() & 0xFFFF, // cast short to unsigned: ensures sequence number is always 0–65535 instead of negative values
                 data.length
         ));
       }
@@ -159,8 +157,8 @@ public class MessageSenderImpl implements MessageSender {
       delayTransmission(delay);
 
       System.out.printf(
-              "Sent message seq=%d | SourceId=%d | Size=%d B | Neighbors=%d | Avg msg size=%.1f B | Next interval=%d ms%n",
-              message.sequenceNumber() & 0xFFFF,
+              "Sent beacon seq=%d | SourceId=%d | Size=%d B | Neighbors=%d | Avg msg size=%.1f B | Next interval=%d ms%n",
+              beacon.sequenceNumber() & 0xFFFF,
               sourceId,
               data.length,
               nodeCount,
@@ -168,22 +166,22 @@ public class MessageSenderImpl implements MessageSender {
               delay
       );
     } catch (Exception e) {
-      throw new RuntimeException("Message sending failed", e);
+      throw new RuntimeException("Beacon sending failed", e);
     }
   }
 
   private void stupidTransmit() {
     try {
-      Message message = createMessage();
-      byte[] data = serializeMessage(message);
+      Beacon beacon = createBeacon();
+      byte[] data = serializeBeacon(beacon); // 38 B
       DatagramPacket packet = new DatagramPacket(data, data.length, getByName(broadcastAddress), receivePort);
       sender.send(packet);
 
-      if (messageLogger != null) {
-        messageLogger.log(new MessageLog(
+      if (beaconLogger != null) {
+        beaconLogger.log(new BeaconLog(
                 new Timestamp(System.currentTimeMillis()),
                 sourceId,
-                message.sequenceNumber() & 0xFFFF,
+                beacon.sequenceNumber() & 0xFFFF,
                 data.length
         ));
       }
@@ -191,27 +189,26 @@ public class MessageSenderImpl implements MessageSender {
       // Update EMA so metrics/logging remain consistent
       messageSizeService.registerMessageSize(data.length);
     } catch (Exception e) {
-      throw new RuntimeException("Message sending failed", e);
+      throw new RuntimeException("Beacon sending failed", e);
     }
   }
 
-  private Message createMessage() {
-    short seqNo = (short) (sequenceNumber.getAndIncrement() & 0xFFFF);
+  private Beacon createBeacon() {
+    short seqNo = (short) (sequenceNumber.getAndIncrement() & 0xFFFF);  // cast short to unsigned: ensures sequence number is always 0–65535 instead of negative values
     int timestamp = (int) (System.currentTimeMillis() % Integer.MAX_VALUE);
-    // Dummy payload to ensure the Message reaches 11200 bit (1400 B) total size.
+    // Dummy payload to ensure the Beacon reaches 304 bit (38 Byte) total size.
     // Required so that application-layer packet size matches the configuration
     // assumed in simulations executed by the lecturer.
-    byte[] dummyPayload = new byte[1390];
-    return new Message(seqNo, sourceId, timestamp, dummyPayload);
+    byte[] dummyPayload = new byte[28];
+    return new Beacon(seqNo, sourceId, timestamp, dummyPayload);
   }
 
-  private byte[] serializeMessage(Message message) {
-    ByteBuffer buffer = ByteBuffer.allocate(1400);
-    buffer.putShort(message.sequenceNumber());
-    buffer.putInt(message.sourceId());
-    buffer.putInt(message.timestampMs());
-    buffer.put(message.payload());
-
+  private byte[] serializeBeacon(Beacon beacon) {
+    ByteBuffer buffer = ByteBuffer.allocate(38);
+    buffer.putShort(beacon.sequenceNumber());
+    buffer.putInt(beacon.sourceId());
+    buffer.putInt(beacon.timestampMs());
+    buffer.put(beacon.payload());
     return buffer.array();
   }
-} 
+}

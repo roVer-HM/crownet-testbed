@@ -1,5 +1,6 @@
-package edu.hm.crownet.testbed.beacon;
+package edu.hm.crownet.testbed.beacon.impl;
 
+import edu.hm.crownet.testbed.beacon.BeaconReceiver;
 import edu.hm.crownet.testbed.beacon.data.Beacon;
 import edu.hm.crownet.testbed.client.Receiver;
 import edu.hm.crownet.testbed.ratecontrol.MessageSizeService;

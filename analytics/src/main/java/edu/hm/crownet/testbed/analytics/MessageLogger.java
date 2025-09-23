@@ -1,5 +1,7 @@
 package edu.hm.crownet.testbed.analytics;
 
+import edu.hm.crownet.testbed.analytics.data.MessageLog;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.FileWriter;

@@ -1,5 +1,6 @@
-package edu.hm.crownet.testbed.scheduler;
+package edu.hm.crownet.testbed.scheduler.impl;
 
+import edu.hm.crownet.testbed.scheduler.Scheduler;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;

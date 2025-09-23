@@ -1,6 +1,6 @@
 package edu.hm.crownet.testbed.api;
 
-import edu.hm.crownet.testbed.api.dto.ExperimentScheduleRequest;
+import edu.hm.crownet.testbed.api.request.ExperimentScheduleRequest;
 import edu.hm.crownet.testbed.beacon.BeaconReceiver;
 import edu.hm.crownet.testbed.beacon.BeaconSender;
 import edu.hm.crownet.testbed.message.MessageReceiver;

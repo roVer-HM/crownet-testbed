@@ -1,4 +1,4 @@
-package edu.hm.crownet.testbed.api.dto;
+package edu.hm.crownet.testbed.api.request;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
