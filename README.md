@@ -163,7 +163,7 @@ This testbed was developed for my bachelor thesis on **Experimental Analysis of 
 
 ## 📄 License
 
-This project is part of academic research. Please cite appropriately if used in your own work.
+This project is part of academic research and licensed under LGPL Version 3.0. Please cite appropriately if used in your own work.
 
 ## Resources
 [1] S. Schuhbäck, L. Wischhof and J. Ott, "Adaptive Transmission Rate Control for Decentralized Sensing Applications," in IEEE Access, vol. 12, pp. 172943-172968, 2024, doi: 10.1109/ACCESS.2024.3495504.
