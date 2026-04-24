@@ -165,5 +165,8 @@ This testbed was developed for my bachelor thesis on **Experimental Analysis of 
 
 This project is part of academic research and licensed under LGPL Version 3.0. Please cite appropriately if used in your own work.
 
+<a href="https://doi.org/10.5281/zenodo.19728184"><img src="https://zenodo.org/badge/1217894152.svg" alt="DOI"></a>
+
 ## Resources
 [1] S. Schuhbäck, L. Wischhof and J. Ott, "Adaptive Transmission Rate Control for Decentralized Sensing Applications," in IEEE Access, vol. 12, pp. 172943-172968, 2024, doi: 10.1109/ACCESS.2024.3495504.
+[2] F. Hemeida, V. Auricchio and L. Wischhof, "Experimental Validation of Adaptive Rate Control for Decentralized Sensing Application" in 27th IEEE International Symposium on a World of Wireless, Mobile and Multimedia Networks (IEEE WoWMoM 2026), Bologna, Italy, 2026. 
